@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NotiAI 진행 보고</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root {
+  --bg: #F7F8FA; --surface: #FFFFFF; --surface-2: #F1F3F6; --line: rgba(15, 23, 42, .09);
+  --text: #0B0F19; --t2: #4B5363; --t3: #858C99;
+  --accent: #2563EB; --accent-soft: #EEF4FF; --teal: #0D9488;
+  --ok: #16A34A; --ok-soft: #EDFBF1; --prog: #2563EB; --prog-soft: #EEF4FF;
+  --plan: #C2640A; --plan-soft: #FFF6E8; --crit: #DC2626; --crit-soft: #FEF1F1;
+  --sans: 'Geist', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0B0D12; --surface: #13161D; --surface-2: #1A1E27; --line: rgba(226, 232, 240, .1);
+    --text: #F1F3F7; --t2: #A7AEBB; --t3: #6F7684;
+    --accent: #6D9CFF; --accent-soft: rgba(59, 110, 246, .16); --teal: #2DD4BF;
+    --ok: #4ADE80; --ok-soft: rgba(34, 197, 94, .14); --prog: #6D9CFF; --prog-soft: rgba(59, 110, 246, .16);
+    --plan: #FBBF24; --plan-soft: rgba(245, 158, 11, .14); --crit: #F87171; --crit-soft: rgba(239, 68, 68, .14);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0D12; --surface: #13161D; --surface-2: #1A1E27; --line: rgba(226, 232, 240, .1);
+  --text: #F1F3F7; --t2: #A7AEBB; --t3: #6F7684;
+  --accent: #6D9CFF; --accent-soft: rgba(59, 110, 246, .16); --teal: #2DD4BF;
+  --ok: #4ADE80; --ok-soft: rgba(34, 197, 94, .14); --prog: #6D9CFF; --prog-soft: rgba(59, 110, 246, .16);
+  --plan: #FBBF24; --plan-soft: rgba(245, 158, 11, .14); --crit: #F87171; --crit-soft: rgba(239, 68, 68, .14);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: flex; flex-direction: column; gap: 44px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -.02em; }
+p { margin: 0; }
+ul { margin: 0; padding-left: 18px; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+
+/* header */
+header { display: flex; flex-direction: column; gap: 14px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 700; line-height: 1.1; }
+h1 .brand { color: var(--accent); }
+.sub { color: var(--t2); font-size: 15px; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.link-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 13px; }
+.link-chip span { font-family: var(--mono); font-size: 12px; color: var(--t3); }
+.link-chip:hover { border-color: var(--accent); text-decoration: none; }
+
+/* pipeline */
+.pipeline { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.pipe { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 12px 11px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.pipe + .pipe::before { content: '→'; position: absolute; left: -9px; top: 13px; transform: translateX(-50%); color: var(--t3); font-size: 12px; }
+.pipe-n { font-family: var(--mono); font-size: 11px; color: var(--t3); }
+.pipe-t { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.pipe .chip { align-self: flex-start; }
+
+/* sections */
+section { display: flex; flex-direction: column; gap: 16px; }
+.sec-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sec-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-family: var(--mono); font-size: 13px; font-weight: 500; display: grid; place-items: center; flex-shrink: 0; }
+h2 { font-size: 21px; font-weight: 700; }
+.legend { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* chips */
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip.done { color: var(--ok); background: var(--ok-soft); }
+.chip.prog { color: var(--prog); background: var(--prog-soft); }
+.chip.plan { color: var(--plan); background: var(--plan-soft); }
+
+/* cards */
+.grid { display: grid; gap: 12px; }
+.grid.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.card h3 { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
+.card ul { color: var(--t2); font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
+.card-top { display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 8px; }
+
+/* backend todo */
+.lane { border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); }
+.lane.hi { background: var(--crit-soft); }
+.lane.link { background: var(--prog-soft); }
+.lane.adv { background: var(--ok-soft); }
+.lane-t { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.lane.hi .lane-t { color: var(--crit); }
+.lane.link .lane-t { color: var(--prog); }
+.lane.adv .lane-t { color: var(--ok); }
+.task { background: var(--surface); border-radius: 9px; padding: 11px 12px; display: flex; flex-direction: column; gap: 3px; }
+.task-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.task b { font-size: 13.5px; font-weight: 600; }
+.task p { font-size: 12px; color: var(--t2); }
+.task code { color: var(--t2); }
+
+/* next steps */
+.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; counter-reset: step; }
+.steps li { counter-increment: step; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 13px; line-height: 1.45; display: flex; flex-direction: column; gap: 6px; }
+.steps li::before { content: counter(step); width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-family: var(--mono); font-size: 12px; display: grid; place-items: center; }
+
+/* asks */
+.asks { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 6px 16px; }
+.ask { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.ask:last-child { border-bottom: none; }
+.ask dt { font-weight: 600; }
+.ask dd { margin: 0; color: var(--t2); }
+
+/* summary */
+.summary { background: var(--accent-soft); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 12px; padding: 18px 20px; font-size: 16px; line-height: 1.7; font-weight: 500; }
+.summary strong { color: var(--accent); font-weight: 700; }
+footer { color: var(--t3); font-size: 12px; font-family: var(--mono); }
+
+@media (max-width: 900px) {
+  .grid.five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid.three, .lanes { grid-template-columns: 1fr; }
+  .pipeline { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pipe + .pipe::before { display: none; }
+}
+@media (max-width: 520px) {
+  .grid.five, .steps, .pipeline { grid-template-columns: 1fr; }
+  .ask { grid-template-columns: 1fr; gap: 2px; }
+  .legend { margin-left: 0; }
+}
+</style>
+<style>
+.lede { font-size: 16px; color: var(--t2); max-width: 68ch; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card p { color: var(--t2); font-size: 13.5px; }
+.label { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--t3); }
+.pipe-tech { font-family: var(--mono); font-size: 11px; color: var(--t2); line-height: 1.4; }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 620px; }
+th { text-align: left; font-size: 12px; font-weight: 600; color: var(--t3); padding: 11px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+td { padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--t2); }
+td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.stat-v { font-size: 30px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.stat.key .stat-v { color: var(--ok); }
+.stat-l { font-size: 13px; font-weight: 600; }
+.stat-d { font-size: 12px; color: var(--t3); }
+.note { font-size: 12.5px; color: var(--t3); }
+.decisions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.phases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.phase ul { color: var(--t2); font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
+.qs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; counter-reset: q; }
+.qs li { counter-increment: q; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 13px 16px 13px 50px; position: relative; font-size: 14px; }
+.qs li::before { content: 'Q' counter(q); position: absolute; left: 16px; top: 13px; font-family: var(--mono); font-size: 12.5px; font-weight: 500; color: var(--accent); }
+.qs li span { display: block; font-size: 12.5px; color: var(--t2); margin-top: 3px; }
+@media (max-width: 900px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .phases, .decisions, .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">교수님 면담 자료 · 중간 점검</div>
+    <h1><span class="brand">NotiAI</span> 진행 보고</h1>
+    <p class="sub">다중 프롬프트 기반 AI 대학생 일정 자동 생성 시스템 · 2026년 9월 28일</p>
+    <div class="links">
+      <a class="link-chip" href="https://notiai.pages.dev" target="_blank" rel="noopener">시연 사이트 <span>notiai.pages.dev</span></a>
+      <a class="link-chip" href="https://github.com/capstonenotiai/model" target="_blank" rel="noopener">모델 저장소 <span>capstonenotiai/model</span></a>
+      <a class="link-chip" href="https://github.com/jaeyeongt/NotiAi" target="_blank" rel="noopener">웹 저장소 <span>jaeyeongt/NotiAi</span></a>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">1</span><h2>프로젝트 개요</h2></div>
+    <div class="two">
+      <article class="card"><span class="label">문제</span><p>학교 공지, 장학금, 공모전, 대외활동, 취업 정보가 여러 사이트에 흩어져 있고, 공지 본문마다 신청 기간과 마감일을 직접 찾아 캘린더에 옮겨야 합니다. 마감을 놓치기 쉽습니다.</p></article>
+      <article class="card"><span class="label">해결</span><p>공지를 자동 수집하고, 파인튜닝한 LLM이 일정 정보를 추출해 Google Calendar에 등록합니다. AI Planner가 사용자 성향에 맞춰 무엇부터 챙길지 추천합니다.</p></article>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">2</span><h2>시스템 구성</h2></div>
+    <div class="pipeline" aria-label="시스템 파이프라인">
+      <div class="pipe"><span class="pipe-n">1</span><span class="pipe-t">공지 수집</span><span class="pipe-tech">Python 크롤러<br>CBNU · Wevity · ContestKorea</span></div>
+      <div class="pipe"><span class="pipe-n">2</span><span class="pipe-t">일정 추출</span><span class="pipe-tech">Llama-3.1-8B QLoRA<br>+ GPT-4o-mini cascade</span></div>
+      <div class="pipe"><span class="pipe-n">3</span><span class="pipe-t">저장·검증</span><span class="pipe-tech">auto / needs_review<br>자동 판정</span></div>
+      <div class="pipe"><span class="pipe-n">4</span><span class="pipe-t">웹 서비스</span><span class="pipe-tech">React + Vite<br>Cloudflare Pages</span></div>
+      <div class="pipe"><span class="pipe-n">5</span><span class="pipe-t">캘린더 등록</span><span class="pipe-tech">Google Calendar API</span></div>
+      <div class="pipe"><span class="pipe-n">6</span><span class="pipe-t">AI Planner</span><span class="pipe-tech">다중 프롬프트<br>OpenAI Responses API</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">3</span><h2>진행 현황</h2>
+      <div class="legend"><span class="chip done">완료</span><span class="chip prog">진행 중</span><span class="chip plan">예정</span></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>구성 요소</th><th>상태</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td>크롤러</td><td><span class="chip done">완료</span></td><td>3개 사이트 수집. CBNU는 학사·장학·취업 게시판</td></tr>
+          <tr><td>일정 추출 모델</td><td><span class="chip done">MVP</span></td><td>제목·시작일·마감일·장소·상세 5개 필드 JSON 추출. 검토 보조형으로 사용 가능</td></tr>
+          <tr><td>웹 프론트엔드</td><td><span class="chip done">완료</span></td><td>화면 7개, 배포 완료. 일정 데이터는 아직 예시(mock) 데이터</td></tr>
+          <tr><td>AI Planner 채팅</td><td><span class="chip prog">진행 중</span></td><td>서버를 통해 GPT와 대화 연결. 일정 데이터를 대화에 넣는 작업은 다음 단계</td></tr>
+          <tr><td>백엔드 API · DB</td><td><span class="chip plan">예정</span></td><td>추출 결과 저장, 일정·사용자 설정 API</td></tr>
+          <tr><td>Google Calendar</td><td><span class="chip plan">예정</span></td><td>Google 로그인과 실제 일정 등록. 현재는 화면에서 등록 상태만 표시</td></tr>
+          <tr><td>다중 프롬프트 모드</td><td><span class="chip prog">재설계 중</span></td><td>관심 분야(WHAT)와 AI 판단 방식(HOW)을 분리하는 구조로 변경 검토</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">4</span><h2>일정 추출 모델 성능</h2></div>
+    <div class="stats">
+      <div class="stat key"><span class="stat-v">100%</span><span class="stat-l">마감일 안전성</span><span class="stat-d">자동 등록 중 마감일을 실제보다 늦게 표시한 오류 0건</span></div>
+      <div class="stat"><span class="stat-v">94.7%</span><span class="stat-l">마감일 정확도</span><span class="stat-d">end_date 일치율</span></div>
+      <div class="stat"><span class="stat-v">82.7%</span><span class="stat-l">실사용 정확도</span><span class="stat-d">제목 정규화 · 날짜 정확 · 장소 부분 일치</span></div>
+      <div class="stat"><span class="stat-v">81.3%</span><span class="stat-l">엄격 정확도</span><span class="stat-d">4개 필드 모두 정확히 일치</span></div>
+    </div>
+    <p class="note">개발셋 75건 기준 (튜닝과 분리). 75건 중 자동 등록 72건, 검토 후 등록 3건. 학습 729건, 최종 테스트셋 75건은 봉인. 출처: capstonenotiai/model README.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">5</span><h2>주요 설계 판단</h2></div>
+    <div class="decisions">
+      <article class="card"><h3>마감일은 늦게 알려주지 않는다</h3><p>마감일을 실제보다 늦게 알려주면 기회를 놓칩니다. 그래서 정확도 하나보다 위험한 방향의 오류를 따로 측정하고, 불확실한 건은 검토 대기로 보냅니다.</p></article>
+      <article class="card"><h3>작은 모델 + 필요할 때만 큰 모델</h3><p>날짜가 불확실한 약 10%만 GPT-4o-mini로 다시 처리합니다. 비용을 줄이면서 재학습 없이 정확도를 보완했습니다.</p></article>
+      <article class="card"><h3>API Key는 서버에만</h3><p>브라우저에서 LLM을 직접 호출하지 않고 Cloudflare 서버 함수를 거칩니다. 시스템 프롬프트도 서버에서만 관리합니다.</p></article>
+      <article class="card"><h3>모드를 설정 데이터로 분리</h3><p>AI 모드와 관심 분야를 코드가 아닌 설정 파일로 관리해, 최종 모드가 정해지면 화면 수정 없이 교체할 수 있습니다.</p></article>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">6</span><h2>향후 계획</h2></div>
+    <div class="phases">
+      <article class="card phase"><span class="label">1단계 · 데이터 연결</span><ul><li>백엔드 API와 DB 구축</li><li>추출 결과를 웹 일정 목록에 연결</li><li>검토 대기 일정 확인 화면</li></ul></article>
+      <article class="card phase"><span class="label">2단계 · 실사용 기능</span><ul><li>Google 로그인</li><li>Google Calendar 실제 등록</li><li>AI Planner에 사용자 일정 반영</li></ul></article>
+      <article class="card phase"><span class="label">3단계 · 고도화와 평가</span><ul><li>다중 프롬프트 모드 확정</li><li>추천 품질 평가</li><li>실제 사용자 테스트</li></ul></article>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">7</span><h2>여쭤보고 싶은 점</h2></div>
+    <ol class="qs">
+      <li>다중 프롬프트 구조를 관심 분야(WHAT)와 AI 판단 방식(HOW)으로 나누는 방향이 적절한지<span>현재 Study / Explorer / Balanced는 임시 모드이며 재설계 중입니다.</span></li>
+      <li>AI Planner 추천 품질을 어떤 기준으로 평가하면 좋을지<span>추출 모델은 정량 지표가 있지만, 추천은 아직 평가 방법이 정해지지 않았습니다.</span></li>
+      <li>최종 테스트셋 평가 시점과 결과 제시 방식<span>개발셋과 분리해 봉인해 둔 75건을 언제 한 번 사용할지.</span></li>
+      <li>Google Calendar 연동 시 개인정보 처리 범위<span>토큰 보관, 사용자 일정 데이터를 LLM에 보낼 때 주의할 점.</span></li>
+    </ol>
+  </section>
+
+  <footer>NotiAI · 충북대학교 소프트웨어학부 졸업작품</footer>
+</div>
+</body>
+</html>
