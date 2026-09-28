@@ -1,0 +1,39 @@
+/* 디자인 토큰 + 기본 스타일 — reference/NotiAI_web_final.html 에서 그대로 이전 */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+:root {
+  --bg:    #FAFAFA;
+  --bg2:   #FFFFFF;
+  --bg3:   #F4F4F5;
+  --bg4:   #E4E4E7;
+  --bgdk:  #09090B;
+  --line:  rgba(0,0,0,0.07);
+  --line2: rgba(0,0,0,0.11);
+  --line3: rgba(0,0,0,0.17);
+  --text:  #09090B;
+  --t2:    #52525B;
+  --t3:    #A1A1AA;
+  --t4:    #D4D4D8;
+  --blue:  #2563EB;
+  --blue2: #1D4ED8;
+  --teal:  #0D9488;
+  --red:   #DC2626;
+  --amber: #D97706;
+  --green: #16A34A;
+  --ind:   #6366F1;
+  --sans:  'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', 'Apple SD Gothic Neo', Roboto, sans-serif;
+  --mono:  'Geist Mono', ui-monospace, 'SF Mono', 'Roboto Mono', monospace;
+  --sw:    220px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.65;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}

@@ -1,0 +1,24 @@
+{
+  "name": "notiai-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "NotiAI — 다중 프롬프트 기반 AI 대학생 일정 자동 생성 시스템 (Frontend)",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.1"
+  }
+}

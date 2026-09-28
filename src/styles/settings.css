@@ -1,0 +1,22 @@
+/* ═══════════════════════════════════
+   VIEW: SETTINGS
+═══════════════════════════════════ */
+.settings-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.settings-row:last-child { border-bottom:none; }
+.sr-left { flex:1; }
+.sr-name { font-size:13.5px; font-weight:500; color:var(--text); }
+.sr-sub { font-size:11.5px; color:var(--t3); font-family:var(--mono); margin-top:2px; }
+.toggle { width:36px; height:20px; border-radius:10px; background:var(--bg4); display:inline-block; position:relative; cursor:pointer; flex-shrink:0; transition:.2s; }
+.toggle::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.toggle.on { background:var(--blue); }
+.toggle.on::after { left:19px; }
+
+/* ── React 이전 시 추가 ── */
+button.toggle { border: none; padding: 0; }
+.settings-saved { font-family: var(--mono); font-size: 11px; color: var(--green); }
+
+/* 관심 분야 선택 (FEATURE_FLAGS.interestSettings 가 true 일 때만 노출) */
+.interest-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.interest-chip { padding: 6px 12px; border-radius: 16px; border: 1px solid var(--line2); background: var(--bg2); font-size: 12.5px; color: var(--t2); cursor: pointer; font-family: var(--sans); transition: .1s; }
+.interest-chip:hover { border-color: var(--line3); color: var(--text); }
+.interest-chip.on { border-color: var(--blue); background: #EFF6FF; color: var(--blue); font-weight: 500; }

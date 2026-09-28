@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NotiAI_v2 — AI 대학생 일정 자동화</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+:root {
+  --bg:    #FAFAFA;
+  --bg2:   #FFFFFF;
+  --bg3:   #F4F4F5;
+  --bg4:   #E4E4E7;
+  --bgdk:  #09090B;
+  --line:  rgba(0,0,0,0.07);
+  --line2: rgba(0,0,0,0.11);
+  --line3: rgba(0,0,0,0.17);
+  --text:  #09090B;
+  --t2:    #52525B;
+  --t3:    #A1A1AA;
+  --t4:    #D4D4D8;
+  --blue:  #2563EB;
+  --blue2: #1D4ED8;
+  --teal:  #0D9488;
+  --red:   #DC2626;
+  --amber: #D97706;
+  --green: #16A34A;
+  --ind:   #6366F1;
+  --sans:  'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', 'Apple SD Gothic Neo', Roboto, sans-serif;
+  --mono:  'Geist Mono', ui-monospace, 'SF Mono', 'Roboto Mono', monospace;
+  --sw:    220px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.65;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════
+   ROUTER — page visibility
+═══════════════════════════════════ */
+.page { display: none; }
+.page.active { display: block; }
+#page-app.active { display: flex; }
+
+/* ═══════════════════════════════════
+   LANDING — dot bg
+═══════════════════════════════════ */
+.dot-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+  background-size: 22px 22px; opacity: .5;
+}
+.dot-bg.fade-v {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+}
+
+/* ── LANDING NAV ── */
+#landing-nav {
+  position: sticky; top: 0; z-index: 300;
+  display: flex; align-items: center;
+  height: 56px; padding: 0 40px;
+  background: rgba(250,250,250,0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 600; color: var(--text);
+  letter-spacing: -.02em; cursor: pointer; text-decoration: none;
+}
+.nlb {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: var(--text);
+  display: flex; align-items: center; justify-content: center;
+}
+.nlb svg { width: 13px; height: 13px; }
+.nav-r { margin-left: auto; display: flex; align-items: center; gap: 1px; }
+.nav-a {
+  padding: 6px 13px; border-radius: 6px;
+  font-size: 13.5px; color: var(--t2);
+  text-decoration: none; cursor: pointer; transition: .1s;
+}
+.nav-a:hover { color: var(--text); background: var(--bg3); }
+.nav-cta {
+  margin-left: 8px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: 8px;
+  background: var(--text); color: #fff;
+  font-size: 13.5px; font-weight: 500;
+  cursor: pointer; border: none; transition: .1s; font-family: var(--sans);
+}
+.nav-cta:hover { opacity: .86; }
+
+/* ── HERO ── */
+.hero {
+  position: relative; overflow: hidden;
+  padding: 88px 40px 64px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+.hero-glow {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 280px;
+  background: radial-gradient(ellipse at top, rgba(37,99,235,0.07) 0%, transparent 70%);
+  pointer-events: none; z-index: 1;
+}
+.hero-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 13px; border-radius: 20px; margin-bottom: 28px;
+  border: 1px solid var(--line2); background: var(--bg2);
+  font-family: var(--mono); font-size: 11.5px; color: var(--t2);
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  position: relative; z-index: 2;
+  animation: up .5s ease both;
+}
+.pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 2px rgba(13,148,136,.2); }
+
+h1 {
+  font-size: clamp(44px, 6.5vw, 76px); font-weight: 700;
+  letter-spacing: -.04em; line-height: 1.05;
+  color: var(--text); max-width: 780px;
+  margin-bottom: 20px;
+  position: relative; z-index: 2;
+  animation: up .5s .08s ease both;
+}
+h1 .grad {
+  background: linear-gradient(135deg, var(--blue) 0%, var(--teal) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: 16px; color: var(--t2); line-height: 1.75;
+  max-width: 490px; margin-bottom: 34px;
+  position: relative; z-index: 2;
+  animation: up .5s .15s ease both;
+}
+.hero-btns {
+  display: flex; gap: 10px; align-items: center;
+  position: relative; z-index: 2;
+  animation: up .5s .21s ease both;
+}
+.btn-dk {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 22px; border-radius: 9px;
+  background: var(--text); color: #fff;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; border: none; transition: .12s; font-family: var(--sans);
+}
+.btn-dk:hover { opacity: .88; transform: translateY(-1px); }
+.btn-gh {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 20px; border-radius: 9px;
+  border: 1px solid var(--line2); background: var(--bg2);
+  font-size: 14px; color: var(--t2);
+  cursor: pointer; transition: .12s; font-family: var(--sans);
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+.btn-gh:hover { border-color: var(--line3); color: var(--text); }
+
+/* ── 히어로 앱 목업 ── */
+.hero-mockup {
+  position: relative; z-index: 2;
+  width: 100%; max-width: 680px; margin-top: 52px;
+  animation: up .5s .3s ease both;
+}
+.mockup-shadow {
+  background: var(--bg2); border: 1px solid var(--line2);
+  border-radius: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.07), 0 32px 64px rgba(0,0,0,.10);
+  overflow: hidden;
+}
+.mb { display: flex; align-items: center; gap: 7px; padding: 11px 16px; background: var(--bg3); border-bottom: 1px solid var(--line); }
+.mb-dots { display: flex; gap: 5px; }
+.mbd { width: 10px; height: 10px; border-radius: 50%; }
+.mb-url { flex: 1; margin: 0 14px; background: var(--bg2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 12px; font-family: var(--mono); font-size: 11px; color: var(--t3); text-align: center; }
+.app-shell { display: grid; grid-template-columns: 180px 1fr; height: 320px; }
+.app-side { border-right: 1px solid var(--line); padding: 16px 0; display: flex; flex-direction: column; gap: 2px; background: var(--bg); }
+.app-side-logo { padding: 0 16px 14px; margin-bottom: 6px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 7px; }
+.app-side-logo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+.app-nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 16px; font-size: 12px; color: var(--t2); cursor: pointer; transition: .1s; margin: 0 6px; border-radius: 6px; }
+.app-nav-item:hover { background: var(--bg3); color: var(--text); }
+.app-nav-item.on { background: #EFF6FF; color: var(--blue); }
+.app-nav-icon { font-size: 13px; }
+.app-nav-badge { margin-left: auto; font-family: var(--mono); font-size: 10px; background: #DBEAFE; color: var(--blue); padding: 1px 6px; border-radius: 10px; }
+.app-main { padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.app-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.app-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.app-badge { font-family: var(--mono); font-size: 10px; background: #F0FDF4; color: var(--green); border: 1px solid #BBF7D0; padding: 2px 8px; border-radius: 5px; }
+.task { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font-size: 12px; transition: .1s; cursor: pointer; }
+.task:hover { border-color: var(--line2); background: var(--bg2); }
+.task-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.task-icon.r { background: #FEF2F2; }
+.task-icon.a { background: #FFFBEB; }
+.task-icon.g { background: #F0FDF4; }
+.task-info { flex: 1; }
+.task-name { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 1px; }
+.task-src { font-family: var(--mono); font-size: 10px; color: var(--t3); }
+.task-badge { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }
+.task-badge.red { background: #FEF2F2; color: var(--red); border: 1px solid #FECACA; }
+.task-badge.amb { background: #FFFBEB; color: var(--amber); border: 1px solid #FDE68A; }
+.task-badge.grn { background: #F0FDF4; color: var(--green); border: 1px solid #BBF7D0; }
+.mock-stats { display: flex; gap: 1px; background: var(--line); border-top: 1px solid var(--line2); }
+.ms { flex: 1; padding: 13px; text-align: center; background: var(--bg2); }
+.ms-val { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.02em; }
+.ms-lbl { font-family: var(--mono); font-size: 9px; color: var(--t3); margin-top: 2px; }
+
+/* ── DIVIDER ── */
+hr { border: none; border-top: 1px solid var(--line); margin: 0 40px; }
+
+/* ── SECTION BASE ── */
+.sec { padding: 92px 40px; max-width: 1120px; margin: 0 auto; }
+.sec-center { text-align: center; }
+.sec-alt { background: var(--bg3); margin: 0; max-width: 100%; padding: 92px 0; }
+.sec-alt .sec-inner { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+.sec-dk { background: var(--bgdk); margin: 0; max-width: 100%; padding: 92px 0; color: #FAFAFA; }
+.sec-dk .sec-inner { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+.sec-dk .sh { color: #FAFAFA; }
+.sec-dk .sh .dim { color: #71717A; }
+.sec-dk .ssub { color: #71717A; }
+
+.tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-bottom: 14px; }
+.tag-dash { width: 16px; height: 1px; background: currentColor; }
+.sh { font-size: clamp(30px, 4vw, 48px); font-weight: 700; letter-spacing: -.035em; color: var(--text); line-height: 1.08; margin-bottom: 14px; }
+.sh .dim { color: var(--t2); font-weight: 400; }
+.ssub { font-size: 15px; color: var(--t2); line-height: 1.75; max-width: 500px; margin: 0 auto 52px; }
+
+/* ── STEPS ── */
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line2); border: 1px solid var(--line2); border-radius: 14px; overflow: hidden; }
+.step { background: var(--bg2); padding: 28px 24px; transition: .13s; position: relative; }
+.step-top-line { position: absolute; top: 0; left: 0; right: 0; height: 2.5px; background: linear-gradient(90deg, var(--blue), var(--teal)); transform: scaleX(0); transform-origin: left; transition: transform .25s ease; }
+.step:hover .step-top-line { transform: scaleX(1); }
+.step:hover { background: var(--bg3); }
+.step-n { display: flex; align-items: center; gap: 9px; margin-bottom: 16px; }
+.step-num { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--line2); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; color: var(--t3); }
+.step-num.done { background: var(--text); color: #fff; border-color: var(--text); }
+.step-ln { flex: 1; height: 1px; background: var(--line); }
+.step-t { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.step-d { font-size: 12.5px; color: var(--t2); line-height: 1.65; }
+.step-tag { display: inline-block; margin-top: 10px; font-family: var(--mono); font-size: 10px; color: var(--t3); background: var(--bg3); border: 1px solid var(--line); padding: 2px 8px; border-radius: 4px; }
+
+/* ── FEATS ── */
+.feat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-bottom: 80px; }
+.feat-row:last-child { margin-bottom: 0; }
+.feat-row.rev .feat-text { order: 2; }
+.feat-row.rev .feat-visual { order: 1; }
+.feat-num-big { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--blue); text-transform: uppercase; margin-bottom: 12px; }
+.feat-h { font-size: 26px; font-weight: 700; letter-spacing: -.025em; color: var(--text); margin-bottom: 12px; }
+.sec-dk .feat-h { color: #FAFAFA; }
+.feat-desc { font-size: 14px; color: var(--t2); line-height: 1.75; }
+.sec-dk .feat-desc { color: #71717A; }
+.vis-block { background: var(--bg2); border: 1px solid var(--line2); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.05); }
+.sec-dk .vis-block { background: #111113; border-color: rgba(255,255,255,.08); }
+.vis-header { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--t3); background: var(--bg3); }
+.sec-dk .vis-header { background: #18181B; border-color: rgba(255,255,255,.06); color: #52525B; }
+.vis-dot { width: 6px; height: 6px; border-radius: 50%; }
+.vis-body { padding: 16px; display: flex; flex-direction: column; gap: 7px; }
+.crawl-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); font-family: var(--mono); font-size: 11.5px; transition: .1s; }
+.sec-dk .crawl-row { background: #18181B; border-color: rgba(255,255,255,.06); }
+.cr-icon { font-size: 13px; }
+.cr-name { color: var(--text); flex: 1; }
+.sec-dk .cr-name { color: #D4D4D8; }
+.cr-count { color: var(--t3); }
+.cr-bar { width: 60px; height: 3px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
+.cr-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--blue), var(--teal)); }
+.ai-row { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font-size: 12px; }
+.sec-dk .ai-row { background: #18181B; border-color: rgba(255,255,255,.06); }
+.ai-label { font-family: var(--mono); font-size: 9px; color: var(--t3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .08em; }
+.ai-val { font-size: 12.5px; color: var(--text); font-weight: 500; }
+.sec-dk .ai-val { color: #D4D4D8; }
+.ai-tag { display: inline-block; margin-top: 5px; font-family: var(--mono); font-size: 9px; padding: 1px 6px; border-radius: 3px; }
+.ai-tag.b { background: #EFF6FF; color: var(--blue); }
+.gcal-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+.gcal-color { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.gcal-name { font-size: 12.5px; color: var(--text); flex: 1; font-weight: 500; }
+.gcal-date { font-family: var(--mono); font-size: 11px; color: var(--t3); }
+.gcal-badge { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
+.gcal-badge.r { background: #FEF2F2; color: var(--red); border: 1px solid #FECACA; }
+.gcal-badge.a { background: #FFFBEB; color: var(--amber); border: 1px solid #FDE68A; }
+.gcal-badge.g { background: #F0FDF4; color: var(--green); border: 1px solid #BBF7D0; }
+
+/* ── MODES ── */
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 760px) { .modes { grid-template-columns: 1fr; } }
+.mode { background: var(--bg2); border: 1.5px solid var(--line); border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: .12s; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.mode:hover { border-color: var(--line2); box-shadow: 0 4px 12px rgba(0,0,0,.07); }
+.mode.on { border-color: var(--blue); background: #EFF6FF; }
+.mode-icon { width: 42px; height: 42px; border-radius: 9px; background: var(--bg3); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.mode-nm { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.mode.on .mode-nm { color: var(--blue); }
+.mode-dc { font-size: 12px; color: var(--t2); }
+.mode-badge { margin-left: auto; font-family: var(--mono); font-size: 10px; padding: 3px 9px; border-radius: 5px; flex-shrink: 0; background: #DBEAFE; color: var(--blue); border: 1px solid #BFDBFE; }
+
+/* ── SITES ── */
+.sites { display: flex; gap: 12px; }
+.site { flex: 1; background: var(--bg2); border: 1.5px solid var(--line); border-radius: 12px; padding: 18px 22px; display: flex; align-items: center; gap: 12px; transition: .12s; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.site:hover { border-color: var(--line2); box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+.site-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 6px rgba(13,148,136,.4); flex-shrink: 0; }
+.site-nm { font-size: 14px; font-weight: 600; color: var(--text); }
+.site-tp { font-family: var(--mono); font-size: 11px; color: var(--t3); margin-left: auto; }
+
+/* ── CTA ── */
+.cta-section { background: var(--bgdk); padding: 96px 40px; text-align: center; position: relative; overflow: hidden; }
+.cta-section .dot-bg { background-image: radial-gradient(rgba(255,255,255,.08) 1px, transparent 1px); background-size: 22px 22px; mask-image: none; -webkit-mask-image: none; opacity: .6; }
+.cta-glow { position: absolute; top: -80px; left: 50%; transform: translateX(-50%); width: 600px; height: 300px; background: radial-gradient(ellipse at center, rgba(37,99,235,0.15) 0%, transparent 65%); pointer-events: none; }
+.cta-h { font-size: clamp(30px, 4vw, 50px); font-weight: 700; letter-spacing: -.035em; color: #FAFAFA; margin-bottom: 12px; position: relative; z-index: 1; line-height: 1.1; }
+.cta-sub { font-size: 15px; color: #71717A; margin-bottom: 36px; position: relative; z-index: 1; }
+.cta-btns { display: flex; justify-content: center; gap: 10px; position: relative; z-index: 1; }
+.btn-wh { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 9px; background: #FAFAFA; color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: .12s; font-family: var(--sans); }
+.btn-wh:hover { opacity: .92; transform: translateY(-1px); }
+.btn-wh-ghost { display: inline-flex; align-items: center; padding: 12px 20px; border-radius: 9px; border: 1px solid rgba(255,255,255,.15); font-size: 14px; color: rgba(255,255,255,.65); cursor: pointer; background: transparent; transition: .12s; font-family: var(--sans); }
+.btn-wh-ghost:hover { border-color: rgba(255,255,255,.35); color: #fff; }
+
+/* ── FOOTER ── */
+footer { border-top: 1px solid var(--line); padding: 20px 40px; display: flex; align-items: center; gap: 14px; color: var(--t3); font-family: var(--mono); font-size: 12px; }
+.fd { color: var(--line2); }
+
+/* ── SCROLL REVEAL ── */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity .65s ease, transform .65s ease; }
+.reveal.in { opacity: 1; transform: none; }
+.reveal-l { opacity: 0; transform: translateX(-24px); transition: opacity .65s ease, transform .65s ease; }
+.reveal-l.in { opacity: 1; transform: none; }
+.reveal-r { opacity: 0; transform: translateX(24px); transition: opacity .65s ease, transform .65s ease; }
+.reveal-r.in { opacity: 1; transform: none; }
+@keyframes up { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+
+/* ═══════════════════════════════════
+   APP — shared layout
+═══════════════════════════════════ */
+#page-app { min-height: 100vh; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sw); flex-shrink: 0;
+  background: var(--bg2); border-right: 1px solid var(--line);
+  position: fixed; top: 0; left: 0; bottom: 0;
+  display: flex; flex-direction: column; z-index: 100;
+}
+.sb-top { padding: 20px 20px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 9px; }
+.sb-logo-box { width: 28px; height: 28px; border-radius: 7px; background: var(--text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sb-logo-box svg { width: 13px; height: 13px; }
+.sb-logo-name { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -.02em; cursor: pointer; }
+.sb-section { padding: 16px 12px 6px; font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--t3); }
+.sb-nav { padding: 0 8px; display: flex; flex-direction: column; gap: 1px; }
+.sb-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 13.5px; color: var(--t2);
+  cursor: pointer; transition: .1s; position: relative;
+  text-decoration: none;
+}
+.sb-item:hover { background: var(--bg3); color: var(--text); }
+.sb-item.on { background: #EFF6FF; color: var(--blue); font-weight: 500; }
+.sb-item.on::before { content: ''; position: absolute; left: 0; top: 20%; bottom: 20%; width: 2.5px; background: var(--blue); border-radius: 2px; }
+.sb-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: .7; }
+.sb-badge { margin-left: auto; font-family: var(--mono); font-size: 10px; background: #DBEAFE; color: var(--blue); padding: 1px 6px; border-radius: 10px; }
+.sb-badge.red { background: #FEF2F2; color: var(--red); }
+.sb-divider { height: 1px; background: var(--line); margin: 10px 12px; }
+.sb-user { margin: auto 10px 12px; background: var(--bg3); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+.sb-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--teal)); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; font-weight: 600; flex-shrink: 0; }
+.sb-uname { font-size: 13px; font-weight: 500; color: var(--text); }
+.sb-email { font-family: var(--mono); font-size: 10px; color: var(--t3); }
+
+/* ── APP MAIN AREA ── */
+.app-main-area { margin-left: var(--sw); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.topbar { height: 56px; display: flex; align-items: center; padding: 0 32px; gap: 14px; border-bottom: 1px solid var(--line); background: var(--bg2); position: sticky; top: 0; z-index: 50; }
+.tb-title { font-size: 14px; font-weight: 500; color: var(--t2); }
+.tb-title span { color: var(--text); }
+.tb-r { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.tb-tag { font-family: var(--mono); font-size: 11px; color: var(--t3); background: var(--bg3); border: 1px solid var(--line); padding: 4px 10px; border-radius: 6px; }
+.btn-sm { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; transition: .1s; font-family: var(--sans); border: none; }
+.btn-sm.primary { background: var(--blue); color: #fff; }
+.btn-sm.primary:hover { background: var(--blue2); }
+.btn-sm.ghost { background: transparent; color: var(--t2); border: 1px solid var(--line2); }
+.btn-sm.ghost:hover { background: var(--bg3); color: var(--text); }
+
+.app-content { padding: 28px 32px; flex: 1; }
+.page-header { margin-bottom: 24px; }
+.page-title { font-size: 23px; font-weight: 700; letter-spacing: -.02em; color: var(--text); margin-bottom: 4px; }
+.page-sub { font-size: 13.5px; color: var(--t2); font-family: var(--sans); font-weight: 400; }
+
+/* view switching */
+.app-view { display: none; }
+.app-view.active { display: block; }
+
+/* ── SHARED CARD ── */
+.card { background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.card-header { padding: 16px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 13.5px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 7px; }
+.card-body { padding: 16px 18px; }
+
+/* pill */
+.pill { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 5px; }
+.pill.red   { background: #FEF2F2; color: var(--red);   border: 1px solid #FECACA; }
+.pill.amber { background: #FFFBEB; color: var(--amber); border: 1px solid #FDE68A; }
+.pill.green { background: #F0FDF4; color: var(--green); border: 1px solid #BBF7D0; }
+.pill.blue  { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+.pill.gray  { background: var(--bg3); color: var(--t2); border: 1px solid var(--line2); }
+.pill.new   { background: #F5F3FF; color: #7C3AED;      border: 1px solid #DDD6FE; }
+
+/* ═══════════════════════════════════
+   VIEW: DASHBOARD
+═══════════════════════════════════ */
+.db-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+.stat-card { background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.04); transition: .12s; }
+.stat-card:hover { border-color: var(--line3); box-shadow: 0 4px 12px rgba(0,0,0,.07); }
+.stat-label { font-family: var(--sans); font-size: 12.5px; font-weight: 600; color: var(--t2); margin-bottom: 10px; }
+.stat-val { font-size: 30px; font-weight: 700; letter-spacing: -.03em; color: var(--text); margin-bottom: 4px; }
+.stat-change { font-family: var(--sans); font-size: 11.5px; font-weight: 500; }
+.stat-change.up { color: var(--green); }
+.stat-change.warn { color: var(--red); }
+.stat-change.neutral { color: var(--t3); }
+.db-main { display: grid; grid-template-columns: 1fr 340px; gap: 16px; margin-bottom: 16px; }
+.db-side { display: flex; flex-direction: column; gap: 16px; }
+.deadline-item { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.deadline-item:last-child { border-bottom: none; }
+.dl-badge-wrap { flex-shrink: 0; width: 44px; }
+.dl-d { font-family: var(--mono); font-size: 12px; font-weight: 500; text-align: center; padding: 4px 6px; border-radius: 7px; }
+.dl-d.hot  { background: #FEF2F2; color: var(--red);   border: 1px solid #FECACA; }
+.dl-d.warm { background: #FFFBEB; color: var(--amber); border: 1px solid #FDE68A; }
+.dl-info { flex: 1; min-width: 0; }
+.dl-name { font-size: 13.5px; font-weight: 500; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-meta { font-family: var(--mono); font-size: 11px; color: var(--t3); display: flex; align-items: center; gap: 6px; }
+.dl-src { color: var(--t2); }
+.btn-register { flex-shrink: 0; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--blue); color: var(--blue); background: transparent; transition: .1s; font-family: var(--sans); }
+.btn-register:hover { background: #EFF6FF; }
+.btn-register.done { border-color: var(--line2); color: var(--t3); cursor: default; }
+.cal-arr { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line2); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--t2); transition: .1s; }
+.cal-arr:hover { background: var(--bg3); color: var(--text); }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+.cal-dow { text-align: center; font-family: var(--mono); font-size: 10px; color: var(--t3); padding: 4px 0; }
+.cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--t2); border-radius: 6px; cursor: pointer; transition: .1s; }
+.cal-day:hover { background: var(--bg3); color: var(--text); }
+.cal-day.today { background: var(--text); color: #fff; font-weight: 600; }
+.cal-day.has-event { position: relative; }
+.cal-day.has-event::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--blue); }
+.cal-day.has-event.hot::after { background: var(--red); }
+.cal-day.has-event.warm::after { background: var(--amber); }
+.cal-day.empty { cursor: default; }
+.ai-preview { background: linear-gradient(135deg, #09090B 0%, #1E1B4B 100%); border-radius: 12px; padding: 20px 22px; color: #fff; position: relative; overflow: hidden; }
+.ai-preview::before { content: ''; position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,.3) 0%, transparent 70%); }
+.ai-preview-tag { font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,.4); margin-bottom: 10px; }
+.ai-preview-mode { font-size: 15px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.ai-preview-desc { font-size: 12.5px; color: rgba(255,255,255,.6); line-height: 1.6; margin-bottom: 14px; }
+.ai-preview-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 7px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.8); font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid rgba(255,255,255,.15); transition: .1s; font-family: var(--sans); }
+.ai-preview-btn:hover { background: rgba(255,255,255,.2); color: #fff; }
+.new-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.new-item:last-child { border-bottom: none; }
+.new-src-badge { flex-shrink: 0; font-family: var(--mono); font-size: 9px; padding: 3px 7px; border-radius: 5px; margin-top: 2px; font-weight: 500; }
+.new-src-badge.cbnu    { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+.new-src-badge.wevity  { background: #F5F3FF; color: #7C3AED;       border: 1px solid #DDD6FE; }
+.new-src-badge.contest { background: #ECFDF5; color: #059669;       border: 1px solid #A7F3D0; }
+.new-info { flex: 1; }
+.new-name { font-size: 13.5px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.new-period { font-family: var(--mono); font-size: 11px; color: var(--t3); }
+.new-r { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+
+/* ═══════════════════════════════════
+   VIEW: SCHEDULES
+═══════════════════════════════════ */
+.filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.filter-group { display: flex; gap: 1px; background: var(--line); border-radius: 9px; overflow: hidden; border: 1px solid var(--line2); }
+.filter-btn { padding: 6px 14px; font-size: 12.5px; color: var(--t2); background: var(--bg2); cursor: pointer; transition: .1s; font-family: var(--sans); border: none; }
+.filter-btn:hover { background: var(--bg3); color: var(--text); }
+.filter-btn.on { background: var(--text); color: #fff; font-weight: 500; }
+.sort-select { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--bg2); font-size: 13px; color: var(--t2); font-family: var(--sans); cursor: pointer; outline: none; }
+.filter-r { margin-left: auto; display: flex; gap: 8px; }
+.schedule-list { display: flex; flex-direction: column; gap: 10px; }
+.sched-card { background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; padding: 18px 22px; display: flex; align-items: flex-start; gap: 16px; transition: .13s; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.04); position: relative; overflow: hidden; }
+.sched-card:hover { border-color: var(--line3); box-shadow: 0 4px 14px rgba(0,0,0,.08); transform: translateY(-1px); }
+.sched-card.urgent   { border-left: 3px solid var(--red); }
+.sched-card.warn-card{ border-left: 3px solid var(--amber); }
+.sc-left { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; width: 52px; }
+.sc-d { font-family: var(--mono); font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 8px; text-align: center; width: 100%; }
+.sc-d.hot  { background: #FEF2F2; color: var(--red);   border: 1px solid #FECACA; }
+.sc-d.warm { background: #FFFBEB; color: var(--amber); border: 1px solid #FDE68A; }
+.sc-d.cool { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+.sc-d.far  { background: var(--bg3); color: var(--t2); border: 1px solid var(--line2); }
+.sc-body { flex: 1; min-width: 0; }
+.sc-title-row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; flex-wrap: wrap; }
+.sc-name { font-size: 14.5px; font-weight: 600; color: var(--text); }
+.sc-src { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 5px; }
+.sc-src.cbnu    { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+.sc-src.wevity  { background: #F5F3FF; color: #7C3AED;       border: 1px solid #DDD6FE; }
+.sc-src.contest { background: #ECFDF5; color: #059669;       border: 1px solid #A7F3D0; }
+.sc-new { font-family: var(--mono); font-size: 10px; background: #FFF7ED; color: #C2410C; border: 1px solid #FED7AA; padding: 2px 7px; border-radius: 5px; }
+.sc-meta { display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--t2); flex-wrap: wrap; }
+.sc-meta-item { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11.5px; }
+.sc-meta-icon { opacity: .5; }
+.sc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.btn-reg { padding: 7px 16px; border-radius: 7px; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: .1s; font-family: var(--sans); white-space: nowrap; border: none; }
+.btn-reg.active { background: var(--blue); color: #fff; }
+.btn-reg.active:hover { background: var(--blue2); }
+.btn-reg.done { background: var(--bg3); color: var(--t2); border: 1px solid var(--line2); cursor: default; }
+.bookmark-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line2); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: .1s; color: var(--t3); }
+.bookmark-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--line3); }
+
+/* ═══════════════════════════════════
+   VIEW: CALENDAR
+═══════════════════════════════════ */
+.cal-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.full-cal { background:var(--bg2); border:1px solid var(--line2); border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+.fcal-head { display:grid; grid-template-columns:repeat(7,1fr); background:var(--bg3); border-bottom:1px solid var(--line); }
+.fcal-dow { padding:10px 8px; text-align:center; font-family:var(--mono); font-size:10px; color:var(--t3); letter-spacing:.06em; text-transform:uppercase; }
+.fcal-grid { display:grid; grid-template-columns:repeat(7,1fr); }
+.fcal-cell { min-height:90px; padding:8px 6px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:3px; transition:.1s; }
+.fcal-cell:hover { background:var(--bg3); }
+.fcal-cell:nth-child(7n) { border-right:none; }
+.fcal-cell.off { background:var(--bg3); opacity:.5; }
+.fcal-num { font-size:12px; font-weight:500; color:var(--t2); margin-bottom:2px; }
+.today-cell { background:#EFF6FF !important; }
+.today-num { background:var(--blue); color:#fff; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; }
+.urgent-cell { background:#FFF5F5 !important; }
+.warn-cell { background:#FFFBEB !important; }
+.fcal-bar { font-size:10px; padding:3px 6px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; transition:.1s; height:18px; align-self:start; z-index:2; box-sizing:border-box; }
+.fcal-bar:hover { filter: brightness(0.94); }
+.cbnu-ev   { background:#DBEAFE; color:#1E40AF; }
+.wevity-ev { background:#EDE9FE; color:#5B21B6; }
+.contest-ev{ background:#D1FAE5; color:#065F46; }
+.fcal-more { font-size:10px; color:var(--t3); font-family:var(--mono); padding:1px 4px; }
+.cal-legend { display:flex; gap:18px; margin-top:14px; flex-wrap:wrap; }
+.cl-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--t2); }
+.cl-dot { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+
+/* ═══════════════════════════════════
+   VIEW: SETTINGS
+═══════════════════════════════════ */
+.settings-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.settings-row:last-child { border-bottom:none; }
+.sr-left { flex:1; }
+.sr-name { font-size:13.5px; font-weight:500; color:var(--text); }
+.sr-sub { font-size:11.5px; color:var(--t3); font-family:var(--mono); margin-top:2px; }
+.toggle { width:36px; height:20px; border-radius:10px; background:var(--bg4); display:inline-block; position:relative; cursor:pointer; flex-shrink:0; transition:.2s; }
+.toggle::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.toggle.on { background:var(--blue); }
+.toggle.on::after { left:19px; }
+
+/* ═══════════════════════════════════
+   AI PLANNER EXTRAS
+═══════════════════════════════════ */
+.action-item { display:flex; align-items:flex-start; gap:9px; padding:8px 0; border-bottom:1px solid var(--line); }
+.action-item:last-child { border-bottom:none; }
+.action-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+.action-dot.red   { background:var(--red); }
+.action-dot.amber { background:var(--amber); }
+.action-dot.blue  { background:var(--blue); }
+.action-text { font-size:13px; color:var(--text); line-height:1.5; }
+.nudge-list { display:flex; flex-direction:column; gap:0; }
+.nudge-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.nudge-item:last-child { border-bottom:none; }
+.nudge-item.done .nudge-d { color:var(--t3); text-decoration:line-through; }
+.nudge-d { font-family:var(--mono); font-size:12px; font-weight:600; color:var(--t2); width:36px; flex-shrink:0; }
+.nudge-d.hot { color:var(--red); text-decoration:none; }
+.nudge-txt { font-size:13px; color:var(--t2); display:flex; align-items:center; gap:7px; }
+.nudge-item.active .nudge-txt { color:var(--text); font-weight:500; }
+
+/* ═══════════════════════════════════
+   VIEW: AI PLANNER
+═══════════════════════════════════ */
+.mode-card { background: var(--bg2); border: 1.5px solid var(--line); border-radius: 12px; padding: 16px 18px; cursor: pointer; transition: .13s; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.mode-card:hover { border-color: var(--line2); box-shadow: 0 4px 12px rgba(0,0,0,.07); }
+.mode-card.on { border-color: var(--blue); background: #EFF6FF; }
+.mc-icon { font-size: 22px; margin-bottom: 10px; }
+.mc-name { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.mode-card.on .mc-name { color: var(--blue); }
+.mc-desc { font-size: 12px; color: var(--t2); line-height: 1.5; }
+.mc-badge { display: inline-block; margin-top: 8px; font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 5px; background: #DBEAFE; color: var(--blue); border: 1px solid #BFDBFE; }
+.planner-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+.briefing-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.briefing-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.week-nav { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--t2); }
+.week-arr { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line2); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--t2); transition: .1s; }
+.week-arr:hover { background: var(--bg3); }
+.ai-chat-panel { background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.ai-chat-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ai-chat-avatar { width: 28px; height: 28px; border-radius: 7px; background: var(--text); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.ai-chat-name { font-size: 13px; font-weight: 600; }
+.ai-chat-sub { font-family: var(--mono); font-size: 10.5px; color: var(--t3); }
+.ai-chat-bubble { background: var(--bg3); border-radius: 10px; padding: 14px 16px; font-size: 13px; line-height: 1.7; color: var(--text); }
+.ai-chat-input-row { display: flex; gap: 8px; margin-top: 12px; }
+.ai-chat-input { flex: 1; border: 1px solid var(--line2); border-radius: 8px; padding: 8px 12px; font-family: var(--sans); font-size: 12.5px; background: var(--bg); }
+.ai-chat-input:focus { outline: none; border-color: var(--blue); }
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.pipeline { display: flex; align-items: center; gap: 6px; }
+.pl-step { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 12px 6px; border-radius: 10px; background: var(--bg3); }
+.pl-icon { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+.pl-label { font-size: 12px; font-weight: 600; }
+.pl-sub { font-family: var(--mono); font-size: 9.5px; color: var(--t3); }
+.pl-arrow { color: var(--t4); font-size: 14px; flex-shrink: 0; }
+.src-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.src-accent { width: 4px; height: 22px; border-radius: 2px; flex-shrink: 0; }
+.src-name { font-size: 12.5px; font-weight: 600; width: 84px; flex-shrink: 0; }
+.src-bar-wrap { flex: 1; height: 6px; border-radius: 3px; background: var(--bg3); overflow: hidden; }
+.src-bar { height: 100%; border-radius: 3px; }
+.src-count { font-family: var(--mono); font-size: 11px; color: var(--t2); width: 32px; text-align: right; flex-shrink: 0; }
+.brief-row { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.brief-row:last-child { border-bottom: none; }
+.brief-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+.brief-dot.hot { background: var(--red); } .brief-dot.warm { background: var(--amber); } .brief-dot.cool { background: var(--blue); } .brief-dot.empty { background: var(--t4); }
+.brief-body { flex: 1; min-width: 0; }
+.brief-date { font-size: 11px; color: var(--t3); margin-bottom: 4px; }
+.brief-card { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.brief-card.empty { color: var(--t3); font-size: 12px; }
+.brief-name { font-size: 12.5px; font-weight: 600; }
+.fcal-cell { cursor: pointer; }
+.fcal-cell.sel { background: #EFF6FF; outline: 2px solid var(--blue); outline-offset: -2px; box-shadow: inset 0 0 0 2px var(--blue); }
+.fcal-cell.sel .fcal-num { color: var(--blue); font-weight: 700; }
+.fcal-bar.ev-sel { outline: 2px solid var(--blue); outline-offset: -1px; font-weight: 700; }
+.fcal-bar.ev-due { box-shadow: inset 0 0 0 1.5px var(--red); font-weight: 700; }
+.cal-detail { margin-top: 14px; background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.cal-detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cal-detail-src { font-family: var(--mono); font-size: 10.5px; color: var(--t2); background: var(--bg3); padding: 2px 8px; border-radius: 5px; }
+.cal-detail-title { font-size: 15px; font-weight: 600; }
+.cal-detail-close { margin-left: auto; cursor: pointer; color: var(--t3); font-size: 14px; }
+.cal-detail-ai { margin-top: 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: var(--t2); line-height: 1.6; }
+.cal-detail-ai b { color: var(--blue); }
+.tl-item { display: flex; gap: 14px; padding-bottom: 20px; position: relative; }
+.tl-item:last-child { padding-bottom: 0; }
+.tl-item:last-child .tl-line { display: none; }
+.tl-left { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 20px; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; z-index: 1; }
+.tl-dot.done  { background: var(--text); }
+.tl-dot.hot   { background: var(--red); box-shadow: 0 0 8px rgba(220,38,38,.3); }
+.tl-dot.warm  { background: var(--amber); }
+.tl-dot.cool  { background: var(--blue); }
+.tl-dot.empty { background: var(--bg2); border: 2px solid var(--line2); }
+.tl-line { flex: 1; width: 1.5px; background: var(--line); margin: 4px 0; }
+.tl-body { flex: 1; }
+.tl-date { font-family: var(--mono); font-size: 11px; color: var(--t3); margin-bottom: 6px; }
+.tl-card { background: var(--bg2); border: 1px solid var(--line2); border-radius: 10px; padding: 13px 16px; transition: .12s; }
+.tl-card:hover { border-color: var(--line3); box-shadow: 0 3px 10px rgba(0,0,0,.06); }
+.tl-card-name { font-size: 13.5px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.tl-card-meta { display: flex; align-items: center; gap: 10px; }
+.tl-card-src { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 4px; }
+.tl-card-src.cbnu    { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+.tl-card-src.wevity  { background: #F5F3FF; color: #7C3AED;       border: 1px solid #DDD6FE; }
+.tl-card-src.contest { background: #ECFDF5; color: #059669;       border: 1px solid #A7F3D0; }
+.tl-d { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 4px; }
+.tl-d.hot  { background: #FEF2F2; color: var(--red);   border: 1px solid #FECACA; }
+.tl-d.warm { background: #FFFBEB; color: var(--amber); border: 1px solid #FDE68A; }
+.tl-d.cool { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+.tl-d.far  { background: var(--bg3); color: var(--t2); border: 1px solid var(--line2); }
+.ai-rec { background: var(--bgdk); border-radius: 14px; padding: 22px; color: #fff; margin-bottom: 14px; position: relative; overflow: hidden; }
+.ai-rec::before { content: ''; position: absolute; top: -30px; right: -30px; width: 100px; height: 100px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,.35) 0%, transparent 70%); }
+.air-tag { font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,.4); margin-bottom: 10px; letter-spacing: .06em; }
+.air-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+.air-mode { font-size: 11px; opacity: .5; font-weight: 400; }
+.air-desc { font-size: 12.5px; color: rgba(255,255,255,.6); line-height: 1.65; margin-bottom: 16px; }
+.air-items { display: flex; flex-direction: column; gap: 7px; }
+.air-item { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-radius: 8px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); font-size: 12px; }
+.air-item-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.air-item-dot.red   { background: var(--red); }
+.air-item-dot.amber { background: var(--amber); }
+.air-item-dot.blue  { background: #818CF8; }
+.air-item-name { flex: 1; color: rgba(255,255,255,.85); }
+.air-item-d { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,.4); }
+.collect-card { background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.cc-header { padding: 14px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+.cc-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.cc-tag { font-family: var(--mono); font-size: 10px; color: var(--teal); background: #F0FDFA; border: 1px solid #99F6E4; padding: 2px 8px; border-radius: 5px; }
+.cc-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.cc-row { display: flex; align-items: center; gap: 10px; }
+.cc-name { font-size: 13px; color: var(--text); flex: 1; }
+.cc-count { font-family: var(--mono); font-size: 12px; color: var(--t2); width: 28px; text-align: right; flex-shrink: 0; }
+.cc-bar { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; max-width: 80px; }
+.cc-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg,var(--blue),var(--teal)); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════
+     PAGE: LANDING
+═══════════════════════════════════ -->
+<div id="page-landing" class="page active">
+
+  <nav id="landing-nav">
+    <div class="nav-logo" onclick="navigate('landing')">
+      <div class="nlb">
+        <svg viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="4.5" height="4.5" rx="1" fill="white"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="1" fill="white" opacity=".5"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="1" fill="white" opacity=".5"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1" fill="white" opacity=".25"/></svg>
+      </div>
+      NotiAI
+    </div>
+    <div class="nav-r">
+      <a href="#how" class="nav-a">작동방식</a>
+      <a href="#feat" class="nav-a">기능</a>
+      <a href="#modes" class="nav-a">AI 모드</a>
+      <a href="https://github.com" class="nav-a" target="_blank">GitHub</a>
+      <button class="nav-cta" onclick="navigate('dashboard')">시작하기 →</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="dot-bg fade-v"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-pill"><span class="pulse"></span>AI 기반 자동 일정 생성 · CBNU 팀 프로젝트</div>
+    <h1>공지 수집부터<br><span class="grad">캘린더 등록</span>까지<br>자동으로</h1>
+    <p class="hero-sub">CBNU, Wevity, ContestKorea의 공지와 공모전을 AI가 자동 수집·분석하여 Google Calendar에 바로 등록합니다.</p>
+    <div class="hero-btns">
+      <button class="btn-dk" onclick="navigate('dashboard')">Google로 시작하기</button>
+      <button class="btn-gh" onclick="navigate('dashboard')">데모 보기</button>
+    </div>
+    <!-- APP MOCKUP -->
+    <div class="hero-mockup">
+      <div class="mockup-shadow">
+        <div class="mb">
+          <div class="mb-dots">
+            <div class="mbd" style="background:#FF5F57"></div>
+            <div class="mbd" style="background:#FFBD2E"></div>
+            <div class="mbd" style="background:#28CA41"></div>
+          </div>
+          <div class="mb-url">notiai.app/dashboard</div>
+        </div>
+        <div class="app-shell">
+          <div class="app-side">
+            <div class="app-side-logo"><span class="app-side-logo-dot"></span>NotiAI</div>
+            <div class="app-nav-item on">대시보드</div>
+            <div class="app-nav-item">공지 수집<span class="app-nav-badge">23</span></div>
+            <div class="app-nav-item">AI 플래너</div>
+            <div class="app-nav-item">캘린더</div>
+          </div>
+          <div class="app-main">
+            <div class="app-topbar">
+              <div class="app-title">다가오는 마감</div>
+              <div class="app-badge">오늘 23건 수집</div>
+            </div>
+            <div class="task">
+              <div class="task-icon r" style="font-size:0;"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:block;margin:auto;"></span></div>
+              <div class="task-info">
+                <div class="task-name">캡스톤디자인 신청 마감</div>
+                <div class="task-src">CBNU 포털 · 2026-05-30</div>
+              </div>
+              <div class="task-badge red">D-11</div>
+            </div>
+            <div class="task">
+              <div class="task-icon a" style="font-size:0;"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);display:block;margin:auto;"></span></div>
+              <div class="task-info">
+                <div class="task-name">SW 공모전 1차 제출</div>
+                <div class="task-src">Wevity · 2026-06-10</div>
+              </div>
+              <div class="task-badge amb">D-22</div>
+            </div>
+            <div class="task">
+              <div class="task-icon g" style="font-size:0;"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:block;margin:auto;"></span></div>
+              <div class="task-info">
+                <div class="task-name">장학금 신청</div>
+                <div class="task-src">CBNU 포털 · 2026-06-15</div>
+              </div>
+              <div class="task-badge grn">D-27</div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-stats">
+          <div class="ms"><div class="ms-val">3+</div><div class="ms-lbl">연동 사이트</div></div>
+          <div class="ms"><div class="ms-val">23</div><div class="ms-lbl">오늘 수집</div></div>
+          <div class="ms"><div class="ms-val">6</div><div class="ms-lbl">임박 마감</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- HOW -->
+  <section class="sec sec-center reveal" id="how">
+    <div class="tag"><span class="tag-dash"></span>작동 방식<span class="tag-dash"></span></div>
+    <h2 class="sh">공지 수집부터 등록까지 <span class="dim">4단계</span></h2>
+    <p class="ssub">매일 자동으로 수집하고, AI가 분석하고, 원클릭으로 캘린더에 등록합니다.</p>
+    <div class="steps">
+      <div class="step"><div class="step-top-line"></div>
+        <div class="step-n"><div class="step-num done">01</div><div class="step-ln"></div></div>
+        <div class="step-t">공지 수집</div>
+        <div class="step-d">매일 자동으로 주요 사이트에서 공지와 공모전을 수집합니다.</div>
+        <div class="step-tag">daily auto</div>
+      </div>
+      <div class="step"><div class="step-top-line"></div>
+        <div class="step-n"><div class="step-num done">02</div><div class="step-ln"></div></div>
+        <div class="step-t">AI 분석</div>
+        <div class="step-d">파인튜닝한 LLaMA 모델이 공지 본문에서 핵심 일정을 자동 추출합니다.</div>
+        <div class="step-tag">llm extract</div>
+      </div>
+      <div class="step"><div class="step-top-line"></div>
+        <div class="step-n"><div class="step-num">03</div><div class="step-ln"></div></div>
+        <div class="step-t">일정 생성</div>
+        <div class="step-d">추출된 정보를 캘린더 등록 형식으로 자동 변환합니다.</div>
+        <div class="step-tag">auto parse</div>
+      </div>
+      <div class="step"><div class="step-top-line"></div>
+        <div class="step-n"><div class="step-num">04</div></div>
+        <div class="step-t">캘린더 등록</div>
+        <div class="step-d">원클릭으로 Google Calendar에 등록하고 알림을 설정합니다.</div>
+        <div class="step-tag">one click</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="sec-alt" id="feat">
+    <div class="sec-inner">
+      <div class="reveal sec-center" style="margin-bottom:52px">
+        <div class="tag"><span class="tag-dash"></span>주요 기능</div>
+        <h2 class="sh">일정 관리의 <span class="dim">모든 것을 자동화</span></h2>
+      </div>
+      <div class="feat-row">
+        <div class="feat-text reveal-l">
+          <div class="feat-num-big">01 · 자동 공지 수집</div>
+          <h3 class="feat-h">매일 자동으로<br>주요 사이트를 수집</h3>
+          <p class="feat-desc">CBNU 포털, Wevity, ContestKorea 등 주요 사이트에서 매일 자동으로 공지와 공모전 정보를 수집합니다.</p>
+        </div>
+        <div class="feat-visual reveal-r">
+          <div class="vis-block">
+            <div class="vis-header"><div class="vis-dot" style="background:#28CA41"></div>오늘 수집 현황 · 09:04 AM</div>
+            <div class="vis-body">
+              <div class="crawl-row"><span class="cr-name">CBNU 포털</span><span class="cr-count" style="color:var(--t2)">11건</span><div class="cr-bar"><div class="cr-fill" style="width:78%"></div></div></div>
+              <div class="crawl-row"><span class="cr-name">Wevity</span><span class="cr-count" style="color:var(--t2)">8건</span><div class="cr-bar"><div class="cr-fill" style="width:56%"></div></div></div>
+              <div class="crawl-row"><span class="cr-name">ContestKorea</span><span class="cr-count" style="color:var(--t2)">4건</span><div class="cr-bar"><div class="cr-fill" style="width:30%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec-dk">
+    <div class="sec-inner">
+      <div class="feat-row rev">
+        <div class="feat-text reveal-r">
+          <div class="feat-num-big" style="color:#818CF8">02 · AI 일정 추출</div>
+          <h3 class="feat-h">AI가 본문을 읽고<br>핵심 정보만 추출</h3>
+          <p class="feat-desc">대학 공지 데이터로 파인튜닝한 LLaMA 3.1 8B 모델이 공지 본문을 분석해 신청 기간, 마감일, 장소 등 핵심 정보를 자동 추출합니다.</p>
+        </div>
+        <div class="feat-visual reveal-l">
+          <div class="vis-block">
+            <div class="vis-header"><div class="vis-dot" style="background:#818CF8"></div>AI 분석 결과 · LLaMA 3.1 8B</div>
+            <div class="vis-body">
+              <div class="ai-row"><div class="ai-label">이벤트명</div><div class="ai-val">2026 캡스톤디자인 경진대회</div><div><div class="ai-tag b">추출됨</div></div></div>
+              <div class="ai-row"><div class="ai-label">신청 기간</div><div class="ai-val">2026.05.15 ~ 05.30</div><div><div class="ai-tag b">추출됨</div></div></div>
+              <div class="ai-row"><div class="ai-label">마감일</div><div class="ai-val">2026년 5월 30일 18:00</div><div><div class="ai-tag b">추출됨</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec-alt">
+    <div class="sec-inner">
+      <div class="feat-row">
+        <div class="feat-text reveal-l">
+          <div class="feat-num-big">03 · Google Calendar 연동</div>
+          <h3 class="feat-h">원클릭으로<br>캘린더에 바로 등록</h3>
+          <p class="feat-desc">원클릭으로 Google Calendar에 일정을 등록하고, 마감 알림을 자동으로 설정합니다.</p>
+        </div>
+        <div class="feat-visual reveal-r">
+          <div class="vis-block">
+            <div class="vis-header"><div class="vis-dot" style="background:#0D9488"></div>Google Calendar 연동</div>
+            <div class="vis-body">
+              <div class="gcal-row"><div class="gcal-color" style="background:#2563EB"></div><div class="gcal-name">캡스톤디자인 신청 마감</div><div class="gcal-date">05/30</div><div class="gcal-badge r">D-11</div></div>
+              <div class="gcal-row"><div class="gcal-color" style="background:#D97706"></div><div class="gcal-name">SW 공모전 1차 제출</div><div class="gcal-date">06/10</div><div class="gcal-badge a">D-22</div></div>
+              <div class="gcal-row"><div class="gcal-color" style="background:#16A34A"></div><div class="gcal-name">장학금 신청</div><div class="gcal-date">06/15</div><div class="gcal-badge g">D-27</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- MODES -->
+  <section class="sec reveal" id="modes">
+    <div class="tag"><span class="tag-dash"></span>AI 플래너</div>
+    <h2 class="sh">나에게 맞는 <span class="dim">AI 모드 선택</span></h2>
+    <div style="height:44px"></div>
+    <div class="modes">
+      <div class="mode on">
+        <div><div class="mode-nm">Study Mode</div><div class="mode-dc">학교 공지 위주 필터링</div></div>
+        <span class="mode-badge">기본</span>
+      </div>
+      <div class="mode">
+        <div><div class="mode-nm">Explorer Mode</div><div class="mode-dc">공모전·대외활동 탐색</div></div>
+      </div>
+      <div class="mode">
+        <div><div class="mode-nm">Balanced Mode</div><div class="mode-dc">전체 일정 균형 관리</div></div>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- SITES -->
+  <section class="sec reveal">
+    <div class="tag"><span class="tag-dash"></span>연동 사이트</div>
+    <h2 class="sh">주요 플랫폼 <span class="dim">연동</span></h2>
+    <div style="height:44px"></div>
+    <div class="sites">
+      <div class="site"><span class="site-dot"></span><span class="site-nm">CBNU 포털</span><span class="site-tp">학교 공지</span></div>
+      <div class="site"><span class="site-dot"></span><span class="site-nm">Wevity</span><span class="site-tp">공모전</span></div>
+      <div class="site"><span class="site-dot"></span><span class="site-nm">ContestKorea</span><span class="site-tp">공모전</span></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section reveal" id="cta">
+    <div class="dot-bg"></div>
+    <div class="cta-glow"></div>
+    <h2 class="cta-h">지금 바로 시작하세요</h2>
+    <p class="cta-sub">Google 계정 하나로 모든 기능을 무료로 사용할 수 있습니다.</p>
+    <div class="cta-btns">
+      <button class="btn-wh" onclick="navigate('dashboard')">Google로 시작하기</button>
+      <a href="https://github.com" class="btn-wh-ghost" target="_blank">GitHub</a>
+    </div>
+  </section>
+
+  <footer>
+    <span>NotiAI</span><span class="fd">·</span>
+    <span>AI 대학생 일정 자동 생성 시스템</span><span class="fd">·</span>
+    <span>충북대학교 팀 프로젝트</span>
+    <a href="https://github.com" style="margin-left:auto;color:var(--t3);text-decoration:none;" target="_blank">GitHub</a>
+  </footer>
+
+</div><!-- /page-landing -->
+
+
+<!-- ═══════════════════════════════════
+     PAGE: APP (Dashboard / Schedules / Planner)
+═══════════════════════════════════ -->
+<div id="page-app" class="page">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-top">
+      <div class="sb-logo-box">
+        <svg viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="4.5" height="4.5" rx="1" fill="white"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="1" fill="white" opacity=".5"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="1" fill="white" opacity=".5"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1" fill="white" opacity=".25"/></svg>
+      </div>
+      <span class="sb-logo-name" onclick="navigate('landing')">NotiAI</span>
+    </div>
+
+    <div class="sb-section">메뉴</div>
+    <nav class="sb-nav">
+      <div class="sb-item" id="nav-dashboard" onclick="switchView('dashboard')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".4"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".4"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".4"/></svg>
+        대시보드
+      </div>
+      <div class="sb-item" id="nav-schedules" onclick="switchView('schedules')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        일정 목록
+        <span class="sb-badge red">6</span>
+      </div>
+      <div class="sb-item" id="nav-planner" onclick="switchView('planner')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="none"><path d="M8 2L9.5 6.5H14L10.5 9L12 13.5L8 11L4 13.5L5.5 9L2 6.5H6.5L8 2Z" fill="currentColor" opacity=".8"/></svg>
+        AI 플래너
+      </div>
+      <div class="sb-item" id="nav-calendar" onclick="switchView('calendar')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 1v4M11 1v4M2 7h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        캘린더
+      </div>
+      <div class="sb-item" id="nav-curation" onclick="switchView('curation')" style="white-space:nowrap;">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        대외활동 큐레이션
+      </div>
+    </nav>
+
+    <div class="sb-divider"></div>
+    <div class="sb-section">설정</div>
+    <nav class="sb-nav">
+      <div class="sb-item" id="nav-settings" onclick="switchView('settings')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        설정
+      </div>
+    </nav>
+
+    <div class="sb-user">
+      <div class="sb-avatar">김</div>
+      <div>
+        <div class="sb-uname">김학생</div>
+        <div class="sb-email">student@cbnu.ac.kr</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <div class="app-main-area">
+
+    <!-- topbar (dynamic) -->
+    <header class="topbar" id="app-topbar">
+      <span class="tb-title" id="topbar-title">NotiAI <span>/ 대시보드</span></span>
+      <div class="tb-r" id="topbar-actions">
+        <span class="tb-tag">마지막 수집 09:00</span>
+        <button class="btn-sm ghost">새로고침</button>
+        <button class="btn-sm primary" onclick="switchView('schedules')">캘린더 연동</button>
+      </div>
+    </header>
+
+    <div class="app-content">
+
+      <!-- ── VIEW: DASHBOARD ── -->
+      <div class="app-view active" id="view-dashboard">
+        <div class="page-header">
+          <div class="page-title">좋은 아침이에요, 김학생 님</div>
+          <div class="page-sub">오늘의 수집 현황과 임박 일정을 확인하세요</div>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+            <span class="pill red" style="font-family:var(--sans); font-weight:600; font-size:11.5px;">● D-3 창업경진대회 임박 알림</span>
+            <span style="margin-left:auto; font-family:var(--sans); font-size:12px; font-weight:500; color:var(--t2);">마지막 수집 09:00 · 현재 오전 09:12 기준</span>
+          </div>
+        </div>
+
+        <div class="db-grid">
+          <div class="stat-card">
+            <div class="stat-val">23</div>
+            <div class="stat-label">오늘 수집된 공지</div>
+            <div class="stat-change neutral">+5 vs 어제</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">2</div>
+            <div class="stat-label">D-7 이내 마감</div>
+            <div class="stat-change warn">긴급 확인 필요</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">5</div>
+            <div class="stat-label">캘린더 등록됨</div>
+            <div class="stat-change neutral">이번 주 기준</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">3</div>
+            <div class="stat-label">미등록 신규 일정</div>
+            <div class="stat-change up">등록 대기 중</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <div class="card-title">오늘의 수집 현황</div>
+            <span class="pill green">✓ 수집 완료 · 09:04</span>
+          </div>
+          <div class="card-body" style="display:flex; flex-direction:column; gap:8px;">
+            <div class="src-row">
+              <div class="src-accent" style="background:var(--blue);"></div>
+              <div class="src-name">CBNU 포털</div>
+              <div class="src-bar-wrap"><div class="src-bar" style="width:78%; background:var(--blue);"></div></div>
+              <div class="src-count">11건</div>
+              <span class="pill green" style="font-size:10px;">완료</span>
+            </div>
+            <div class="src-row">
+              <div class="src-accent" style="background:#7C3AED;"></div>
+              <div class="src-name">Wevity</div>
+              <div class="src-bar-wrap"><div class="src-bar" style="width:55%; background:#7C3AED;"></div></div>
+              <div class="src-count">8건</div>
+              <span class="pill green" style="font-size:10px;">완료</span>
+            </div>
+            <div class="src-row">
+              <div class="src-accent" style="background:var(--teal);"></div>
+              <div class="src-name">ContestKorea</div>
+              <div class="src-bar-wrap"><div class="src-bar" style="width:30%; background:var(--teal);"></div></div>
+              <div class="src-count">4건</div>
+              <span class="pill green" style="font-size:10px;">완료</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="db-main">
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5a6 6 0 100 12 6 6 0 000-12zM7.5 4v4l2.5 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  임박 마감
+                  <span class="pill red">D-7 이내 2건</span>
+                </div>
+                <button class="btn-sm ghost" style="font-size:12px;" onclick="switchView('schedules')">전체 보기</button>
+              </div>
+              <div class="card-body">
+                <div class="deadline-item">
+                  <div class="dl-badge-wrap"><div class="dl-d hot">D-3</div></div>
+                  <div class="dl-info">
+                    <div class="dl-name">2026 충북대학교 창업경진대회</div>
+                    <div class="dl-meta"><span class="dl-src">CBNU 포털</span>· 2026-05-22</div>
+                  </div>
+                  <button class="btn-register done" data-event-id="ev1" onclick="toggleRegister('ev1')">등록됨</button>
+                </div>
+                <div class="deadline-item">
+                  <div class="dl-badge-wrap"><div class="dl-d warm">D-6</div></div>
+                  <div class="dl-info">
+                    <div class="dl-name">제27회 대한민국 대학생 광고대상</div>
+                    <div class="dl-meta"><span class="dl-src">Wevity</span>· 2026-05-25</div>
+                  </div>
+                  <button class="btn-register" data-event-id="ev2" onclick="toggleRegister('ev2')">등록하기</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 4.5v3l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  신규 수집 일정
+                  <span class="pill new">NEW 3건</span>
+                </div>
+                <button class="btn-sm ghost" style="font-size:12px;" onclick="switchView('schedules')">전체 보기</button>
+              </div>
+              <div class="card-body">
+                <div class="new-item">
+                  <div class="new-src-badge cbnu">CBNU 포털</div>
+                  <div class="new-info">
+                    <div class="new-name">충북대 SW중심대학 해커톤</div>
+                    <div class="new-period">2026-05-20 ~ 2026-05-30</div>
+                  </div>
+                  <div class="new-r">
+                    <span class="pill amber">D-11</span>
+                    <button class="btn-register" data-event-id="ev3" onclick="toggleRegister('ev3')">등록하기</button>
+                  </div>
+                </div>
+                <div class="new-item">
+                  <div class="new-src-badge wevity">Wevity</div>
+                  <div class="new-info">
+                    <div class="new-name">제27회 대한민국 대학생 광고대상</div>
+                    <div class="new-period">2026-05-08 ~ 2026-05-25</div>
+                  </div>
+                  <div class="new-r">
+                    <span class="pill amber">D-6</span>
+                    <button class="btn-register" data-event-id="ev2" onclick="toggleRegister('ev2')">등록하기</button>
+                  </div>
+                </div>
+                <div class="new-item">
+                  <div class="new-src-badge contest">ContestKorea</div>
+                  <div class="new-info">
+                    <div class="new-name">2026 K-스타트업 그랜드챌린지</div>
+                    <div class="new-period">2026-05-15 ~ 2026-06-02</div>
+                  </div>
+                  <div class="new-r">
+                    <span class="pill blue">D-14</span>
+                    <button class="btn-register" data-event-id="ev4" onclick="toggleRegister('ev4')">등록하기</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="db-side">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 1v3M10 1v3M1.5 6.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  2026년 5월
+                </div>
+                <div style="display:flex;gap:4px;">
+                  <button class="cal-arr">‹</button>
+                  <button class="cal-arr">›</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="cal-grid">
+                  <div class="cal-dow">일</div><div class="cal-dow">월</div><div class="cal-dow">화</div><div class="cal-dow">수</div><div class="cal-dow">목</div><div class="cal-dow">금</div><div class="cal-dow">토</div>
+                  <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div>
+                  <div class="cal-day">1</div><div class="cal-day">2</div><div class="cal-day">3</div>
+                  <div class="cal-day">4</div><div class="cal-day">5</div><div class="cal-day">6</div><div class="cal-day">7</div><div class="cal-day">8</div><div class="cal-day has-event">9</div><div class="cal-day">10</div>
+                  <div class="cal-day">11</div><div class="cal-day">12</div><div class="cal-day">13</div><div class="cal-day">14</div><div class="cal-day">15</div><div class="cal-day">16</div><div class="cal-day">17</div>
+                  <div class="cal-day">18</div><div class="cal-day today">19</div><div class="cal-day">20</div><div class="cal-day">21</div><div class="cal-day has-event hot">22</div><div class="cal-day">23</div><div class="cal-day">24</div>
+                  <div class="cal-day has-event warm">25</div><div class="cal-day">26</div><div class="cal-day">27</div><div class="cal-day">28</div><div class="cal-day">29</div><div class="cal-day has-event">30</div><div class="cal-day">31</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-preview">
+              <div class="ai-preview-tag">// AI PLANNER</div>
+              <div class="ai-preview-mode">Study Mode <span style="font-size:11px;opacity:.5;font-weight:400;">활성</span></div>
+              <div class="ai-preview-desc">D-7 이내 마감 일정 2건이 있습니다. 학교 공지를 우선으로 AI가 처리 순서를 추천해 드립니다.</div>
+              <button class="ai-preview-btn" onclick="switchView('planner')">주간 브리핑 보기 →</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /view-dashboard -->
+
+
+      <!-- ── VIEW: SCHEDULES ── -->
+      <div class="app-view" id="view-schedules">
+        <div class="page-header">
+          <div class="page-title">일정 목록</div>
+          <div class="page-sub">AI가 수집한 모든 일정을 관리하세요</div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="filter-group">
+            <button class="filter-btn on" data-group="src" data-value="all" onclick="setFilter(this, 'src')">전체</button>
+            <button class="filter-btn" data-group="src" data-value="cbnu" onclick="setFilter(this, 'src')">CBNU 포털</button>
+            <button class="filter-btn" data-group="src" data-value="wevity" onclick="setFilter(this, 'src')">Wevity</button>
+            <button class="filter-btn" data-group="src" data-value="contest" onclick="setFilter(this, 'src')">ContestKorea</button>
+          </div>
+          <div class="filter-group" style="margin-left:4px;">
+            <button class="filter-btn on" data-group="status" data-value="all" onclick="setFilter(this, 'status')">전체</button>
+            <button class="filter-btn" data-group="status" data-value="registered" onclick="setFilter(this, 'status')">등록됨</button>
+            <button class="filter-btn" data-group="status" data-value="unregistered" onclick="setFilter(this, 'status')">미등록</button>
+            <button class="filter-btn" data-group="status" data-value="bookmark" onclick="setFilter(this, 'status')">북마크</button>
+          </div>
+          <div class="filter-r">
+            <select class="sort-select" id="sortSelect" onchange="applyFilters()"><option value="deadline">마감일순</option><option value="recent">최신순</option><option value="src">사이트순</option></select>
+          </div>
+        </div>
+
+        <div class="schedule-list">
+          <div class="sched-card urgent" data-src="cbnu" data-status="registered" data-bookmark="false">
+            <div class="sc-left"><div class="sc-d hot">D-3</div></div>
+            <div class="sc-body">
+              <div class="sc-title-row">
+                <span class="sc-name">2026 충북대학교 창업경진대회</span>
+                <span class="sc-src cbnu">CBNU 포털</span>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-meta-item">2026-05-01 ~ 05-22</span>
+                <span class="sc-meta-item">충북대학교 개신문화관</span>
+              </div>
+            </div>
+            <div class="sc-right">
+              <button class="btn-reg done" data-event-id="ev1" onclick="toggleRegister('ev1')">등록됨</button>
+              <button class="bookmark-btn">☆</button>
+            </div>
+          </div>
+
+          <div class="sched-card warn-card" data-src="wevity" data-status="unregistered" data-bookmark="false">
+            <div class="sc-left"><div class="sc-d warm">D-6</div></div>
+            <div class="sc-body">
+              <div class="sc-title-row">
+                <span class="sc-name">제27회 대한민국 대학생 광고대상</span>
+                <span class="sc-src wevity">Wevity</span>
+                <span class="sc-new">NEW</span>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-meta-item">2026-05-08 ~ 05-25</span>
+                <span class="sc-meta-item">온라인 접수</span>
+              </div>
+            </div>
+            <div class="sc-right">
+              <button class="btn-reg active" data-event-id="ev2" onclick="toggleRegister('ev2')">캘린더 등록</button>
+              <button class="bookmark-btn">☆</button>
+            </div>
+          </div>
+
+          <div class="sched-card" data-src="cbnu" data-status="unregistered" data-bookmark="false">
+            <div class="sc-left"><div class="sc-d cool">D-11</div></div>
+            <div class="sc-body">
+              <div class="sc-title-row">
+                <span class="sc-name">충북대 SW중심대학 해커톤</span>
+                <span class="sc-src cbnu">CBNU 포털</span>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-meta-item">2026-05-20 ~ 05-30</span>
+                <span class="sc-meta-item">충북대학교 공과대학</span>
+              </div>
+            </div>
+            <div class="sc-right">
+              <button class="btn-reg active" data-event-id="ev3" onclick="toggleRegister('ev3')">캘린더 등록</button>
+              <button class="bookmark-btn">☆</button>
+            </div>
+          </div>
+
+          <div class="sched-card" data-src="contest" data-status="unregistered" data-bookmark="false">
+            <div class="sc-left"><div class="sc-d cool">D-14</div></div>
+            <div class="sc-body">
+              <div class="sc-title-row">
+                <span class="sc-name">2026 K-스타트업 그랜드챌린지</span>
+                <span class="sc-src contest">ContestKorea</span>
+                <span class="sc-new">NEW</span>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-meta-item">2026-05-15 ~ 06-02</span>
+                <span class="sc-meta-item">서울 코엑스</span>
+              </div>
+            </div>
+            <div class="sc-right">
+              <button class="btn-reg active" data-event-id="ev4" onclick="toggleRegister('ev4')">캘린더 등록</button>
+              <button class="bookmark-btn">☆</button>
+            </div>
+          </div>
+
+          <div class="sched-card" data-src="wevity" data-status="registered" data-bookmark="true">
+            <div class="sc-left"><div class="sc-d far">D-22</div></div>
+            <div class="sc-body">
+              <div class="sc-title-row">
+                <span class="sc-name">2026 대학생 UX 디자인 공모전</span>
+                <span class="sc-src wevity">Wevity</span>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-meta-item">2026-05-10 ~ 06-10</span>
+                <span class="sc-meta-item">온라인</span>
+              </div>
+            </div>
+            <div class="sc-right">
+              <button class="btn-reg done" data-event-id="ev5" onclick="toggleRegister('ev5')">등록됨</button>
+              <button class="bookmark-btn" style="color:var(--amber);">★</button>
+            </div>
+          </div>
+
+          <div class="sched-card" data-src="contest" data-status="unregistered" data-bookmark="false">
+            <div class="sc-left"><div class="sc-d far">D-32</div></div>
+            <div class="sc-body">
+              <div class="sc-title-row">
+                <span class="sc-name">청년 사회혁신 아이디어 공모전</span>
+                <span class="sc-src contest">ContestKorea</span>
+              </div>
+              <div class="sc-meta">
+                <span class="sc-meta-item">2026-05-01 ~ 06-20</span>
+                <span class="sc-meta-item">온라인 제출</span>
+              </div>
+            </div>
+            <div class="sc-right">
+              <button class="btn-reg active" data-event-id="ev6" onclick="toggleRegister('ev6')">캘린더 등록</button>
+              <button class="bookmark-btn">☆</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /view-schedules -->
+
+
+      <!-- ── VIEW: AI PLANNER ── -->
+      <div class="app-view" id="view-planner">
+        <div class="page-header">
+          <div class="page-title">AI 플래너</div>
+          <div class="page-sub">AI가 분석한 일정 우선순위와 추천 모드를 확인하세요</div>
+        </div>
+
+        <div class="mode-selector">
+          <div class="mode-card on" onclick="selectMode(this, 'study')">
+            <div class="mc-name">Study Mode</div>
+            <div class="mc-desc">학교 공지·학사 일정 중심</div>
+            <div class="mc-badge">현재 활성</div>
+          </div>
+          <div class="mode-card" onclick="selectMode(this, 'explorer')">
+            <div class="mc-name">Explorer Mode</div>
+            <div class="mc-desc">Wevity·ContestKorea 공모전·대외활동 탐색</div>
+          </div>
+          <div class="mode-card" onclick="selectMode(this, 'balanced')">
+            <div class="mc-name">Balanced Mode</div>
+            <div class="mc-desc">전체 일정 균형 분석</div>
+          </div>
+        </div>
+
+        <div class="ai-chat-panel">
+          <div class="ai-chat-header">
+            <div class="ai-chat-avatar">N</div>
+            <div>
+              <div class="ai-chat-name">AI 플래너</div>
+              <div class="ai-chat-sub">GPT-4o-mini · 모드별 시스템 프롬프트</div>
+            </div>
+            <span class="pill blue" id="planner-mode-pill" style="margin-left:auto;">Study Mode</span>
+          </div>
+          <div class="ai-chat-bubble" id="planner-chat-msg">
+            안녕하세요! Study Mode로 설정되어 있어요.<br><br>
+            현재 수집된 일정 중 <b>CBNU 포털 공지 11건</b>을 분석했습니다. 학교 관련 마감 2건 중 <b>D-3 창업경진대회</b>가 가장 급합니다.<br><br>
+            무엇이 궁금하신가요?
+          </div>
+          <div class="ai-chat-input-row">
+            <input class="ai-chat-input" type="text" placeholder="AI 플래너에게 물어보세요...">
+            <button class="btn-sm primary">전송</button>
+          </div>
+        </div>
+
+        <div class="planner-grid" style="margin-top:16px;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">7일 브리핑</div>
+              <div class="week-nav"><button class="week-arr">‹</button><span>5/19 — 5/25</span><button class="week-arr">›</button></div>
+            </div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:0;">
+              <div class="brief-row">
+                <div class="brief-dot hot"></div>
+                <div class="brief-body">
+                  <div class="brief-date">5월 22일 (금)</div>
+                  <div class="brief-card"><span class="brief-name">창업경진대회 — 마감</span><span class="pill blue" style="font-size:9.5px;">CBNU</span><span class="pill red" style="font-size:9.5px;">D-3</span></div>
+                </div>
+              </div>
+              <div class="brief-row">
+                <div class="brief-dot empty"></div>
+                <div class="brief-body">
+                  <div class="brief-date">5월 23일 (토) – 24일 (일)</div>
+                  <div class="brief-card empty">일정 없음</div>
+                </div>
+              </div>
+              <div class="brief-row">
+                <div class="brief-dot warm"></div>
+                <div class="brief-body">
+                  <div class="brief-date">5월 25일 (월)</div>
+                  <div class="brief-card"><span class="brief-name">광고대상 마감</span><span class="pill blue" style="font-size:9.5px;">Wevity</span><span class="pill amber" style="font-size:9.5px;">D-6</span></div>
+                </div>
+              </div>
+              <div class="brief-row">
+                <div class="brief-dot cool"></div>
+                <div class="brief-body">
+                  <div class="brief-date">그 이후</div>
+                  <div class="brief-card"><span class="brief-name">SW 해커톤 외 3건</span><span class="pill blue" style="font-size:9.5px;">CBNU</span><span class="pill" style="font-size:9.5px;background:var(--bg3);color:var(--t2);">D-11~</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div class="card">
+              <div class="card-header"><div class="card-title">수집 현황</div><span class="pill green">✓ 완료</span></div>
+              <div class="card-body">
+                <div class="cc-row"><div class="cc-name">CBNU 포털</div><div class="cc-count">11</div><div class="cc-bar"><div class="cc-fill" style="width:78%"></div></div></div>
+                <div class="cc-row"><div class="cc-name">Wevity</div><div class="cc-count">8</div><div class="cc-bar"><div class="cc-fill" style="width:55%"></div></div></div>
+                <div class="cc-row"><div class="cc-name">ContestKorea</div><div class="cc-count">4</div><div class="cc-bar"><div class="cc-fill" style="width:30%"></div></div></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><div class="card-title">AI 액션 제안</div><span class="pill blue">3건</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:9px;">
+                <div class="action-item"><div class="action-dot red"></div><div class="action-text">창업경진대회 신청서를 지금 작성하세요</div></div>
+                <div class="action-item"><div class="action-dot amber"></div><div class="action-text">광고대상 작품 파일을 최종 점검하세요</div></div>
+                <div class="action-item"><div class="action-dot blue"></div><div class="action-text">미등록 일정 3건을 캘린더에 등록하세요</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /view-planner -->
+
+      <!-- ── VIEW: CALENDAR ── -->
+      <div class="app-view" id="view-calendar">
+        <div class="page-header">
+          <div class="page-title">2026년 5월</div>
+          <div class="page-sub">등록된 일정을 캘린더로 확인하세요</div>
+        </div>
+
+        <div class="cal-toolbar">
+          <div style="display:flex;gap:4px;">
+            <button class="cal-arr">‹</button>
+            <button class="cal-arr" style="font-size:11px;padding:0 10px;width:auto;">오늘</button>
+            <button class="cal-arr">›</button>
+          </div>
+          <div style="display:flex;gap:1px;background:var(--line);border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-left:auto;">
+            <button class="filter-btn on" style="font-size:12px;">월</button>
+            <button class="filter-btn" style="font-size:12px;">주</button>
+            <button class="filter-btn" style="font-size:12px;">일</button>
+          </div>
+        </div>
+
+        <div class="full-cal">
+          <div class="fcal-head">
+            <div class="fcal-dow">일</div><div class="fcal-dow">월</div><div class="fcal-dow">화</div>
+            <div class="fcal-dow">수</div><div class="fcal-dow">목</div><div class="fcal-dow">금</div><div class="fcal-dow">토</div>
+          </div>
+          <div class="fcal-grid" id="fcalGrid">
+            <!-- week 1 (빈칸 + 1~3) -->
+            <div class="fcal-cell off"></div><div class="fcal-cell off"></div><div class="fcal-cell off"></div><div class="fcal-cell off"></div>
+            <div class="fcal-cell" data-day="1"><div class="fcal-num">1</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="2"><div class="fcal-num">2</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="3"><div class="fcal-num">3</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="4"><div class="fcal-num">4</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="5"><div class="fcal-num">5</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="6"><div class="fcal-num">6</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="7"><div class="fcal-num">7</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="8"><div class="fcal-num">8</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="9"><div class="fcal-num">9</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="10"><div class="fcal-num">10</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="11"><div class="fcal-num">11</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="12"><div class="fcal-num">12</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="13"><div class="fcal-num">13</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="14"><div class="fcal-num">14</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="15"><div class="fcal-num">15</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="16"><div class="fcal-num">16</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="17"><div class="fcal-num">17</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="18"><div class="fcal-num">18</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell today-cell" data-day="19"><div class="fcal-num today-num">19</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="20"><div class="fcal-num">20</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="21"><div class="fcal-num">21</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="22"><div class="fcal-num">22</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="23"><div class="fcal-num">23</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="24"><div class="fcal-num">24</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="25"><div class="fcal-num">25</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="26"><div class="fcal-num">26</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="27"><div class="fcal-num">27</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="28"><div class="fcal-num">28</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="29"><div class="fcal-num">29</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="30"><div class="fcal-num">30</div><div class="fcal-evs"></div></div>
+            <div class="fcal-cell" data-day="31"><div class="fcal-num">31</div><div class="fcal-evs"></div></div>
+          </div>
+        </div>
+
+        <!-- 캘린더 범례 -->
+        <div class="cal-legend">
+          <div class="cl-item"><span class="cl-dot" style="background:#DBEAFE;border:1px solid #BFDBFE;"></span><span>CBNU 포털</span></div>
+          <div class="cl-item"><span class="cl-dot" style="background:#EDE9FE;border:1px solid #DDD6FE;"></span><span>Wevity</span></div>
+          <div class="cl-item"><span class="cl-dot" style="background:#D1FAE5;border:1px solid #A7F3D0;"></span><span>ContestKorea</span></div>
+          <div class="cl-item"><span class="cl-dot" style="background:#FEE2E2;border:1px solid #FECACA;"></span><span>D-7 이내 마감</span></div>
+        </div>
+
+        <div class="cal-detail" id="cal-detail" style="display:none;"></div>
+      </div><!-- /view-calendar -->
+
+      <!-- ── VIEW: 대외활동 큐레이션 (부캠 연동) ── -->
+      <div class="app-view" id="view-curation">
+        <div class="page-header">
+          <div class="page-title">대외활동 큐레이션</div>
+          <div class="page-sub">Cloud·데이터·AI 파이프라인 구축 부트캠프에서 실제 배포한 서비스를 NotiAI에 연동했습니다</div>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+            <span class="pill blue" style="font-family:var(--sans); font-weight:600; font-size:11.5px;">OCI Compute · Oracle DB · Node.js API</span>
+            <span style="margin-left:auto; font-family:var(--sans); font-size:12px; font-weight:500; color:var(--t2);">매일 00:10 자동 업데이트</span>
+          </div>
+        </div>
+
+        <div class="db-grid">
+          <div class="stat-card">
+            <div class="stat-val">432</div>
+            <div class="stat-label">전체 활동</div>
+            <div class="stat-change neutral">ContestKorea + Wevity</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">80</div>
+            <div class="stat-label">7일 이내 마감</div>
+            <div class="stat-change warn">지금 확인 필요</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">18</div>
+            <div class="stat-label">오늘 마감</div>
+            <div class="stat-change warn">긴급</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">8,300만</div>
+            <div class="stat-label">시상 규모 최대</div>
+            <div class="stat-change neutral">평균 689만</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <div class="card-title">오늘의 추천 활동</div>
+            <span class="pill green">임박도 · 시상규모 순위합산 기반</span>
+          </div>
+          <div class="card-body" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+            <div style="border:1px solid var(--line2); border-radius:10px; padding:14px;">
+              <span class="pill blue" style="font-size:10px;">공모전</span>
+              <div style="font-size:13px; font-weight:600; margin:8px 0 6px;">2026년 전주MBC K-하이테크 플랫폼 제2회 가상현실 공간 창작 공모전</div>
+              <div style="font-size:11px; color:var(--t3); margin-bottom:6px;">임박도 상위 11% · 시상 상위 8%</div>
+              <div style="font-size:13px; font-weight:700; color:var(--red);">D-2 · 1,100만원</div>
+            </div>
+            <div style="border:1px solid var(--line2); border-radius:10px; padding:14px;">
+              <span class="pill amber" style="font-size:10px;">기타</span>
+              <div style="font-size:13px; font-weight:600; margin:8px 0 6px;">Korea Clean Challenge 제1회 코리아 클린 챌린지</div>
+              <div style="font-size:11px; color:var(--t3); margin-bottom:6px;">임박도 상위 22% · 시상 상위 6%</div>
+              <div style="font-size:13px; font-weight:700; color:var(--amber);">D-5 · 1,000만원</div>
+            </div>
+            <div style="border:1px solid var(--line2); border-radius:10px; padding:14px;">
+              <span class="pill green" style="font-size:10px;">인턴십</span>
+              <div style="font-size:13px; font-weight:600; margin:8px 0 6px;">넥슨 영 프로그래머스 컵 (NEXON Young Programmers Cup)</div>
+              <div style="font-size:11px; color:var(--t3); margin-bottom:6px;">임박도 상위 29% · 시상 상위 1%</div>
+              <div style="font-size:13px; font-weight:700; color:var(--blue);">D-7 · 5,000만원</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+          <div class="card">
+            <div class="card-header"><div class="card-title">분야별 분포</div><span class="pill gray">전체 432건</span></div>
+            <div class="card-body" style="display:flex; align-items:center; gap:24px;">
+              <div style="width:150px; height:150px; border-radius:50%; flex-shrink:0; background:conic-gradient(#2563EB 0% 74.1%, #9CA3AF 74.1% 88%, #16A34A 88% 92.6%, #7C3AED 92.6% 96.1%, #F59E0B 96.1% 100%); display:flex; align-items:center; justify-content:center;">
+                <div style="width:88px; height:88px; border-radius:50%; background:var(--bg2); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                  <div style="font-size:20px; font-weight:700;">432</div>
+                  <div style="font-size:10px; color:var(--t3);">전체 활동</div>
+                </div>
+              </div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:12.5px;"><span style="width:9px; height:9px; border-radius:2px; background:#2563EB; flex-shrink:0;"></span>공모전<span style="margin-left:auto; font-weight:600;">320건 · 74%</span></div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:12.5px;"><span style="width:9px; height:9px; border-radius:2px; background:#9CA3AF; flex-shrink:0;"></span>기타<span style="margin-left:auto; font-weight:600;">60건 · 14%</span></div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:12.5px;"><span style="width:9px; height:9px; border-radius:2px; background:#16A34A; flex-shrink:0;"></span>서포터즈<span style="margin-left:auto; font-weight:600;">20건 · 5%</span></div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:12.5px;"><span style="width:9px; height:9px; border-radius:2px; background:#7C3AED; flex-shrink:0;"></span>인턴십<span style="margin-left:auto; font-weight:600;">15건 · 3%</span></div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:12.5px;"><span style="width:9px; height:9px; border-radius:2px; background:#F59E0B; flex-shrink:0;"></span>해커톤<span style="margin-left:auto; font-weight:600;">17건 · 4%</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">사이트 × 분야별 분포</div>
+              <div style="margin-left:auto; display:flex; gap:12px; font-size:11px; color:var(--t2);">
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#2563EB;"></span>ContestKorea</span>
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:2px;background:#93C5FD;"></span>Wevity</span>
+              </div>
+            </div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:14px;">
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>공모전</span><span style="color:var(--t3);">198 · 122</span></div>
+                <div style="display:flex; gap:2px; height:10px;"><div style="width:61.1%; background:#2563EB; border-radius:3px 0 0 3px;"></div><div style="width:37.7%; background:#93C5FD; border-radius:0 3px 3px 0;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>기타</span><span style="color:var(--t3);">30 · 30</span></div>
+                <div style="display:flex; gap:2px; height:10px;"><div style="width:34.7%; background:#2563EB; border-radius:3px 0 0 3px;"></div><div style="width:34.7%; background:#93C5FD; border-radius:0 3px 3px 0;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>인턴십</span><span style="color:var(--t3);">5 · 10</span></div>
+                <div style="display:flex; gap:2px; height:10px;"><div style="width:5.8%; background:#2563EB; border-radius:3px 0 0 3px;"></div><div style="width:11.6%; background:#93C5FD; border-radius:0 3px 3px 0;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>해커톤</span><span style="color:var(--t3);">4 · 3</span></div>
+                <div style="display:flex; gap:2px; height:10px;"><div style="width:4.6%; background:#2563EB; border-radius:3px 0 0 3px;"></div><div style="width:3.5%; background:#93C5FD; border-radius:0 3px 3px 0;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>서포터즈</span><span style="color:var(--t3);">8 · 22</span></div>
+                <div style="display:flex; gap:2px; height:10px;"><div style="width:9.3%; background:#2563EB; border-radius:3px 0 0 3px;"></div><div style="width:25.6%; background:#93C5FD; border-radius:0 3px 3px 0;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">마감 임박 TOP 5</div><span class="pill gray">days_left 오름차순</span></div>
+          <div class="card-body" style="padding:0;">
+            <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+              <thead><tr style="text-align:left; color:var(--t3); font-size:11px;"><th style="padding:10px 20px;">제목</th><th style="padding:10px;">분야</th><th style="padding:10px 20px; text-align:right;">D-day</th></tr></thead>
+              <tbody>
+                <tr style="border-top:1px solid var(--line);"><td style="padding:10px 20px;">쥬크박스 뮤지컬 [쇼 머스트 고 온 in 대학로] 전례역 오디션</td><td style="padding:10px;"><span class="pill blue" style="font-size:10px;">공모전</span></td><td style="padding:10px 20px; text-align:right; color:var(--red); font-weight:700;">D-DAY</td></tr>
+                <tr style="border-top:1px solid var(--line);"><td style="padding:10px 20px;">2026 경운대학교 총장배 데이터톤 경진대회</td><td style="padding:10px;"><span class="pill gray" style="font-size:10px;">기타</span></td><td style="padding:10px 20px; text-align:right; color:var(--red); font-weight:700;">D-DAY</td></tr>
+                <tr style="border-top:1px solid var(--line);"><td style="padding:10px 20px;">제3회 한남대학교 청소년 찬양축제 (H&U Worship Festival)</td><td style="padding:10px;"><span class="pill blue" style="font-size:10px;">공모전</span></td><td style="padding:10px 20px; text-align:right; color:var(--red); font-weight:700;">D-DAY</td></tr>
+                <tr style="border-top:1px solid var(--line);"><td style="padding:10px 20px;">2026 글로벌 청소년 콘텐츠 경진대회 AI영상 부문</td><td style="padding:10px;"><span class="pill blue" style="font-size:10px;">공모전</span></td><td style="padding:10px 20px; text-align:right; color:var(--red); font-weight:700;">D-DAY</td></tr>
+                <tr style="border-top:1px solid var(--line);"><td style="padding:10px 20px;">뮤지컬 [엄마마투리] 배우 모집</td><td style="padding:10px;"><span class="pill blue" style="font-size:10px;">공모전</span></td><td style="padding:10px 20px; text-align:right; color:var(--red); font-weight:700;">D-DAY</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="text-align:center; margin-top:14px; font-size:11.5px; color:var(--t3);">
+          하계 Cloud·데이터·AI 파이프라인 구축 부트캠프 최종 프로젝트 · OCI 기반 실제 배포 (원본 서비스: <span style="font-family:var(--mono);">140.238.29.199</span>)
+        </div>
+      </div><!-- /view-curation -->
+
+      <!-- ── VIEW: SETTINGS ── -->
+      <div class="app-view" id="view-settings">
+        <div class="page-header">
+          <div class="page-title">설정</div>
+          <div class="page-sub">계정 및 알림 설정을 관리하세요</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;max-width:680px;">
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">계정 정보</div></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:16px;">
+              <div style="display:flex;align-items:center;gap:14px;">
+                <div class="sb-avatar" style="width:44px;height:44px;font-size:16px;">김</div>
+                <div>
+                  <div style="font-size:14px;font-weight:600;">김학생</div>
+                  <div style="font-family:var(--mono);font-size:11px;color:var(--t3);">student@cbnu.ac.kr</div>
+                </div>
+                <button class="btn-sm ghost" style="margin-left:auto;">Google 재연결</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">연동 사이트</div><span class="pill blue">3개 활성</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+              <div class="settings-row"><div class="sr-left"><div class="sr-name">CBNU 포털</div><div class="sr-sub">학교 공지 · 매일 09:00 수집</div></div><label class="toggle on"></label></div>
+              <div class="settings-row"><div class="sr-left"><div class="sr-name">Wevity</div><div class="sr-sub">공모전 · 매일 09:00 수집</div></div><label class="toggle on"></label></div>
+              <div class="settings-row"><div class="sr-left"><div class="sr-name">ContestKorea</div><div class="sr-sub">공모전 · 매일 09:00 수집</div></div><label class="toggle on"></label></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">알림 설정</div></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+              <div class="settings-row"><div class="sr-left"><div class="sr-name">D-7 알림</div><div class="sr-sub">마감 7일 전 알림</div></div><label class="toggle on"></label></div>
+              <div class="settings-row"><div class="sr-left"><div class="sr-name">D-3 긴급 알림</div><div class="sr-sub">마감 3일 전 긴급 알림</div></div><label class="toggle on"></label></div>
+              <div class="settings-row"><div class="sr-left"><div class="sr-name">새 일정 알림</div><div class="sr-sub">새로 수집된 일정 즉시 알림</div></div><label class="toggle"></label></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">AI 플래너 설정</div></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+              <div class="settings-row"><div class="sr-left"><div class="sr-name">기본 모드</div><div class="sr-sub">현재: Study Mode</div></div><button class="btn-sm ghost" style="font-size:12px;">변경</button></div>
+              <div class="settings-row"><div class="sr-left"><div class="sr-name">자동 모드 추천</div><div class="sr-sub">AI가 상황에 따라 모드를 추천</div></div><label class="toggle on"></label></div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /view-settings -->
+
+    </div><!-- /app-content -->
+  </div><!-- /app-main-area -->
+</div><!-- /page-app -->
+
+
+<script>
+/* ── ROUTER ── */
+const topbarConfigs = {
+  dashboard: {
+    title: 'NotiAI <span>/ 대시보드</span>',
+    actions: `<span class="tb-tag">마지막 수집 09:00</span>
+              <button class="btn-sm ghost">새로고침</button>
+              <button class="btn-sm primary" onclick="switchView('schedules')">캘린더 연동</button>`
+  },
+  schedules: {
+    title: 'NotiAI <span>/ 일정 목록</span>',
+    actions: `<span class="tb-tag">총 6건 · 마지막 수집 09:00</span>
+              <button class="btn-sm ghost">직접 추가</button>
+              <button class="btn-sm primary">전체 등록</button>`
+  },
+  planner: {
+    title: 'NotiAI <span>/ AI 플래너</span>',
+    actions: `<button class="btn-sm ghost">모드 변경</button>
+              <button class="btn-sm primary">전체 일정 등록</button>`
+  },
+  calendar: {
+    title: 'NotiAI <span>/ 캘린더</span>',
+    actions: `<span class="tb-tag">2026년 5월</span>
+              <button class="btn-sm ghost">오늘</button>
+              <button class="btn-sm primary" onclick="switchView('schedules')">일정 추가</button>`
+  },
+  curation: {
+    title: 'NotiAI <span>/ 대외활동 큐레이션</span>',
+    actions: `<span class="tb-tag">부캠 연동 · 매일 00:10 갱신</span>`
+  },
+  settings: {
+    title: 'NotiAI <span>/ 설정</span>',
+    actions: `<button class="btn-sm primary">저장</button>`
+  }
+};
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  if (page === 'landing') {
+    document.getElementById('page-landing').classList.add('active');
+    window.scrollTo(0, 0);
+    // re-run scroll reveals
+    setTimeout(() => {
+      document.querySelectorAll('.reveal, .reveal-l, .reveal-r').forEach(el => {
+        el.classList.remove('in');
+        obs.observe(el);
+      });
+    }, 50);
+  } else {
+    document.getElementById('page-app').classList.add('active');
+    switchView(page);
+    window.scrollTo(0, 0);
+  }
+}
+
+function switchView(view) {
+  // ensure app page is shown
+  if (!document.getElementById('page-app').classList.contains('active')) {
+    navigate(view);
+    return;
+  }
+
+  // hide all views
+  document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+
+  // update sidebar active state
+  document.querySelectorAll('.sb-item').forEach(item => item.classList.remove('on'));
+  const navEl = document.getElementById('nav-' + view);
+  if (navEl) navEl.classList.add('on');
+
+  // update topbar
+  const cfg = topbarConfigs[view];
+  if (cfg) {
+    document.getElementById('topbar-title').innerHTML = cfg.title;
+    document.getElementById('topbar-actions').innerHTML = cfg.actions;
+  }
+
+  window.scrollTo(0, 0);
+}
+
+function setFilter(btn, group) {
+  btn.closest('.filter-group').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  applyFilters();
+}
+
+function applyFilters() {
+  const srcBtn = document.querySelector('.filter-btn[data-group="src"].on');
+  const statusBtn = document.querySelector('.filter-btn[data-group="status"].on');
+  const srcVal = srcBtn ? srcBtn.dataset.value : 'all';
+  const statusVal = statusBtn ? statusBtn.dataset.value : 'all';
+  const sortVal = document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : 'deadline';
+
+  const list = document.querySelector('.schedule-list');
+  if (!list) return;
+  const cards = Array.from(list.querySelectorAll('.sched-card'));
+
+  cards.forEach(card => {
+    const src = card.dataset.src;
+    const status = card.dataset.status;
+    const bookmark = card.dataset.bookmark === 'true';
+    let show = true;
+    if (srcVal !== 'all' && src !== srcVal) show = false;
+    if (statusVal === 'registered' && status !== 'registered') show = false;
+    if (statusVal === 'unregistered' && status !== 'unregistered') show = false;
+    if (statusVal === 'bookmark' && !bookmark) show = false;
+    card.style.display = show ? '' : 'none';
+  });
+
+  const visible = cards.filter(c => c.style.display !== 'none');
+  if (sortVal === 'src') {
+    visible.sort((a,b) => (a.dataset.src||'').localeCompare(b.dataset.src||''));
+    visible.forEach(c => list.appendChild(c));
+  } else if (sortVal === 'recent') {
+    // recent = reverse DOM order as a simple proxy
+    visible.slice().reverse().forEach(c => list.appendChild(c));
+  }
+  // 'deadline' keeps original markup order (already sorted by D-day)
+}
+
+const plannerModeMsgs = {
+  study: '안녕하세요! Study Mode로 설정되어 있어요.<br><br>현재 수집된 일정 중 <b>CBNU 포털 공지 11건</b>을 분석했습니다. 학교 관련 마감 2건 중 <b>D-3 창업경진대회</b>가 가장 급합니다.<br><br>무엇이 궁금하신가요?',
+  explorer: '안녕하세요! Explorer Mode로 설정되어 있어요.<br><br>Wevity·ContestKorea에서 수집된 공모전 12건을 분석했습니다. 상금 규모가 큰 <b>K-스타트업 그랜드챌린지</b>와 마감이 임박한 <b>광고대상(D-6)</b>을 우선 추천드려요.<br><br>무엇이 궁금하신가요?',
+  balanced: '안녕하세요! Balanced Mode로 설정되어 있어요.<br><br>전체 소스(CBNU·Wevity·ContestKorea)의 일정 23건을 균형 있게 분석했습니다. 마감 임박도와 카테고리를 고르게 반영해 우선순위를 정리했어요.<br><br>무엇이 궁금하신가요?'
+};
+const plannerModeNames = { study: 'Study Mode', explorer: 'Explorer Mode', balanced: 'Balanced Mode' };
+
+function selectMode(card, key) {
+  card.closest('.mode-selector').querySelectorAll('.mode-card').forEach(c => {
+    c.classList.remove('on');
+    const badge = c.querySelector('.mc-badge');
+    if (badge) badge.remove();
+  });
+  card.classList.add('on');
+  const badge = document.createElement('div');
+  badge.className = 'mc-badge';
+  badge.textContent = '현재 활성';
+  card.appendChild(badge);
+
+  if (key && plannerModeMsgs[key]) {
+    document.getElementById('planner-chat-msg').innerHTML = plannerModeMsgs[key];
+    document.getElementById('planner-mode-pill').textContent = plannerModeNames[key];
+  }
+}
+
+/* ── SCROLL REVEAL (landing only) ── */
+const obs = new IntersectionObserver(els => {
+  els.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal, .reveal-l, .reveal-r').forEach(el => obs.observe(el));
+
+
+/* toggle click */
+document.querySelectorAll('.toggle').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('on'));
+});
+
+/* ── EVENT DATA MODEL ── */
+const EVENTS = {
+  ev1: { title: '2026 충북대학교 창업경진대회', src: 'cbnu', srcLabel: 'CBNU 포털', start: '2026-05-01', end: '2026-05-22', dday: 'D-3', loc: '충북대학교 개신문화관', registered: true },
+  ev2: { title: '제27회 대한민국 대학생 광고대상', src: 'wevity', srcLabel: 'Wevity', start: '2026-05-08', end: '2026-05-25', dday: 'D-6', loc: '온라인 접수', registered: false },
+  ev3: { title: '충북대 SW중심대학 해커톤', src: 'cbnu', srcLabel: 'CBNU 포털', start: '2026-05-20', end: '2026-05-30', dday: 'D-11', loc: '충북대학교 공과대학', registered: false },
+  ev4: { title: '2026 K-스타트업 그랜드챌린지', src: 'contest', srcLabel: 'ContestKorea', start: '2026-05-15', end: '2026-06-02', dday: 'D-14', loc: '서울 코엑스', registered: false },
+  ev5: { title: '2026 대학생 UX 디자인 공모전', src: 'wevity', srcLabel: 'Wevity', start: '2026-05-10', end: '2026-06-10', dday: 'D-22', loc: '온라인', registered: true },
+  ev6: { title: '청년 사회혁신 아이디어 공모전', src: 'contest', srcLabel: 'ContestKorea', start: '2026-05-01', end: '2026-06-20', dday: 'D-32', loc: '온라인 제출', registered: false },
+};
+const SRC_CLASS = { cbnu: 'cbnu-ev', wevity: 'wevity-ev', contest: 'contest-ev' };
+
+function eventBounds(ev) {
+  const startMonth = parseInt(ev.start.split('-')[1], 10);
+  const endMonth = parseInt(ev.end.split('-')[1], 10);
+  const startDay = parseInt(ev.start.split('-')[2], 10);
+  const endDay = parseInt(ev.end.split('-')[2], 10);
+  const lo = startMonth < 5 ? 1 : startDay;   // clipped into May grid
+  const hi = endMonth > 5 ? 31 : endDay;      // clipped into May grid
+  return { lo, hi, endsInMonth: endMonth === 5 };
+}
+
+/* day -> {row, col} position within the fcal 7-col grid (row 1 = weekday headers) */
+const DAY_POS = {};
+const FIRST_DOW = new Date(2026, 4, 1).getDay(); // 2026-05-01 = 금요일(5)
+for (let d = 1; d <= 31; d++) {
+  const idx = FIRST_DOW + d - 1;
+  DAY_POS[d] = { row: 2 + Math.floor(idx / 7), col: (idx % 7) + 1 };
+}
+const ROW_DAYS = {};
+Object.entries(DAY_POS).forEach(([dStr, pos]) => {
+  const d = parseInt(dStr, 10);
+  (ROW_DAYS[pos.row] = ROW_DAYS[pos.row] || []).push(d);
+});
+
+function renderCalendar() {
+  document.querySelectorAll('#fcalGrid .fcal-bar').forEach(el => el.remove());
+  document.querySelectorAll('#fcalGrid .fcal-cell[data-day]').forEach(cell => cell.classList.remove('urgent-cell'));
+
+  const rowStack = {}; // row -> how many bars already stacked (for overlap offset)
+  const dayCoverage = {};
+
+  Object.entries(EVENTS).forEach(([id, ev]) => {
+    if (!ev.registered) return;
+    const { lo, hi, endsInMonth } = eventBounds(ev);
+    const shortTitle = ev.title.replace(/^\d{4}\s|^제\d+회\s/, '').slice(0, 14);
+
+    Object.entries(ROW_DAYS).forEach(([rowStr, days]) => {
+      const row = parseInt(rowStr, 10);
+      const rowMin = Math.min(...days), rowMax = Math.max(...days);
+      const segStart = Math.max(lo, rowMin);
+      const segEnd = Math.min(hi, rowMax);
+      if (segStart > segEnd) return;
+
+      for (let d = segStart; d <= segEnd; d++) dayCoverage[d] = true;
+
+      const colStart = DAY_POS[segStart].col;
+      const colEnd = DAY_POS[segEnd].col;
+      const stackIdx = rowStack[row] || 0;
+      rowStack[row] = stackIdx + 1;
+
+      const includesEnd = endsInMonth && segEnd === hi;
+      const bar = document.createElement('div');
+      bar.className = 'fcal-bar ' + SRC_CLASS[ev.src] + (includesEnd ? ' ev-due' : '');
+      bar.dataset.eventId = id;
+      bar.style.gridRow = row;
+      bar.style.gridColumn = colStart + ' / ' + (colEnd + 1);
+      bar.style.marginTop = (26 + stackIdx * 20) + 'px';
+      bar.textContent = includesEnd ? shortTitle + ' 마감' : (segStart === lo ? shortTitle + ' 시작' : shortTitle);
+      bar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showEventDetail(id, segEnd);
+      });
+      document.getElementById('fcalGrid').appendChild(bar);
+      if (includesEnd) {
+        // mark the deadline day's cell for a subtle highlight
+        const deadlineCell = document.querySelector(`#fcalGrid .fcal-cell[data-day="${hi}"]`);
+        if (deadlineCell) deadlineCell.classList.add('urgent-cell');
+      }
+    });
+  });
+
+  window._dayCoverage = dayCoverage;
+}
+
+function showEventDetail(id, day) {
+  document.querySelectorAll('#fcalGrid .fcal-bar').forEach(c => c.classList.remove('ev-sel'));
+  document.querySelectorAll(`#fcalGrid .fcal-bar[data-event-id="${id}"]`).forEach(c => c.classList.add('ev-sel'));
+  const ev = EVENTS[id];
+  const panel = document.getElementById('cal-detail');
+  panel.innerHTML = `<div class="cal-detail-head"><span class="cal-detail-src">${ev.srcLabel}</span><div class="cal-detail-title">${ev.title}</div><span class="pill red" style="margin-left:8px;">${ev.dday}</span><span class="cal-detail-close" onclick="document.getElementById('cal-detail').style.display='none'">✕</span></div>
+    <div style="font-size:12.5px;color:var(--t2);">2026년 ${ev.start.slice(5).replace('-','월 ')}일 ~ ${ev.end.slice(5).replace('-','월 ')}일 · ${ev.loc}</div>
+    <div class="cal-detail-ai"><b>AI 요약</b> · 파인튜닝된 모델이 이 공지의 시작일, 종료일, 장소, 세부 정보를 자동으로 추출했습니다. 마감이 가까워지면 D-7·D-3 알림이 자동으로 발송됩니다.</div>`;
+  panel.style.display = 'block';
+}
+
+/* empty-day click: clear selection, show "no schedule" only if no event covers this day */
+document.querySelectorAll('#fcalGrid .fcal-cell[data-day]').forEach(cell => {
+  cell.addEventListener('click', (e) => {
+    if (e.target.closest('.fcal-bar')) return; // handled by bar's own listener
+    const day = parseInt(cell.dataset.day, 10);
+    if (window._dayCoverage && window._dayCoverage[day]) return; // covered by a bar — let the bar handle clicks
+    document.querySelectorAll('#fcalGrid .fcal-bar').forEach(c => c.classList.remove('ev-sel'));
+    const panel = document.getElementById('cal-detail');
+    panel.innerHTML = `<div class="cal-detail-head"><div class="cal-detail-title">2026년 5월 ${day}일</div><span class="cal-detail-close" onclick="document.getElementById('cal-detail').style.display='none'">✕</span></div><div style="color:var(--t3);font-size:13px;">등록된 일정이 없습니다.</div>`;
+    panel.style.display = 'block';
+  });
+});
+
+/* ── REGISTER / UNREGISTER TOGGLE ── */
+function toggleRegister(id) {
+  EVENTS[id].registered = !EVENTS[id].registered;
+  const isReg = EVENTS[id].registered;
+
+  document.querySelectorAll(`.btn-register[data-event-id="${id}"]`).forEach(btn => {
+    btn.classList.toggle('done', isReg);
+    btn.textContent = isReg ? '등록됨' : '등록하기';
+  });
+  document.querySelectorAll(`.btn-reg[data-event-id="${id}"]`).forEach(btn => {
+    btn.classList.toggle('done', isReg);
+    btn.classList.toggle('active', !isReg);
+    btn.textContent = isReg ? '등록됨' : '캘린더 등록';
+  });
+
+  renderCalendar();
+  if (!isReg) {
+    document.getElementById('cal-detail').style.display = 'none';
+  }
+}
+
+function pinDayCells() {
+  document.querySelectorAll('#fcalGrid .fcal-cell[data-day]').forEach(cell => {
+    const d = parseInt(cell.dataset.day, 10);
+    const pos = DAY_POS[d];
+    cell.style.gridRow = pos.row;
+    cell.style.gridColumn = pos.col;
+  });
+  document.querySelectorAll('#fcalGrid .fcal-cell.off').forEach(el => el.remove());
+}
+pinDayCells();
+renderCalendar();
+
+/* init sidebar state */
+document.getElementById('nav-dashboard').classList.add('on');
+</script>
+</body>
+</html>

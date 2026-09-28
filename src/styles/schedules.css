@@ -1,0 +1,42 @@
+/* ═══════════════════════════════════
+   VIEW: SCHEDULES
+═══════════════════════════════════ */
+.filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.filter-group { display: flex; gap: 1px; background: var(--line); border-radius: 9px; overflow: hidden; border: 1px solid var(--line2); }
+.filter-btn { padding: 6px 14px; font-size: 12.5px; color: var(--t2); background: var(--bg2); cursor: pointer; transition: .1s; font-family: var(--sans); border: none; }
+.filter-btn:hover { background: var(--bg3); color: var(--text); }
+.filter-btn.on { background: var(--text); color: #fff; font-weight: 500; }
+.sort-select { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--bg2); font-size: 13px; color: var(--t2); font-family: var(--sans); cursor: pointer; outline: none; }
+.filter-r { margin-left: auto; display: flex; gap: 8px; }
+.schedule-list { display: flex; flex-direction: column; gap: 10px; }
+.sched-card { background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; padding: 18px 22px; display: flex; align-items: flex-start; gap: 16px; transition: .13s; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.04); position: relative; overflow: hidden; }
+.sched-card:hover { border-color: var(--line3); box-shadow: 0 4px 14px rgba(0,0,0,.08); transform: translateY(-1px); }
+.sched-card.urgent   { border-left: 3px solid var(--red); }
+.sched-card.warn-card{ border-left: 3px solid var(--amber); }
+.sc-left { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; width: 52px; }
+.sc-d { font-family: var(--mono); font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 8px; text-align: center; width: 100%; }
+.sc-d.hot  { background: #FEF2F2; color: var(--red);   border: 1px solid #FECACA; }
+.sc-d.warm { background: #FFFBEB; color: var(--amber); border: 1px solid #FDE68A; }
+.sc-d.cool { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+.sc-d.far  { background: var(--bg3); color: var(--t2); border: 1px solid var(--line2); }
+.sc-body { flex: 1; min-width: 0; }
+.sc-title-row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; flex-wrap: wrap; }
+.sc-name { font-size: 14.5px; font-weight: 600; color: var(--text); }
+.sc-src { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 5px; }
+.sc-src.cbnu    { background: #EFF6FF; color: var(--blue);  border: 1px solid #BFDBFE; }
+.sc-src.wevity  { background: #F5F3FF; color: #7C3AED;       border: 1px solid #DDD6FE; }
+.sc-src.contest { background: #ECFDF5; color: #059669;       border: 1px solid #A7F3D0; }
+.sc-new { font-family: var(--mono); font-size: 10px; background: #FFF7ED; color: #C2410C; border: 1px solid #FED7AA; padding: 2px 7px; border-radius: 5px; }
+.sc-meta { display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--t2); flex-wrap: wrap; }
+.sc-meta-item { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11.5px; }
+.sc-meta-icon { opacity: .5; }
+.sc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.btn-reg { padding: 7px 16px; border-radius: 7px; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: .1s; font-family: var(--sans); white-space: nowrap; border: none; }
+.btn-reg.active { background: var(--blue); color: #fff; }
+.btn-reg.active:hover { background: var(--blue2); }
+.btn-reg.done { background: var(--bg3); color: var(--t2); border: 1px solid var(--line2); cursor: default; }
+.bookmark-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line2); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: .1s; color: var(--t3); }
+.bookmark-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--line3); }
+
+/* ── React 이전 시 추가 ── */
+.bookmark-btn.on { color: var(--amber); }
