@@ -119,6 +119,7 @@ src/
   styles/                         원본 CSS 를 영역별로 분리 (base, landing, app, dashboard, …)
 functions/                        Cloudflare Pages Functions (서버 측 코드, 브라우저 번들에 포함되지 않음)
   api/planner/chat.js             POST /api/planner/chat
+  api/health.js                   GET /api/health (서버·OpenAI 설정 확인)
   lib/openai.js                   OpenAI Responses API 호출
   lib/prompts.js                  AI 플래너 system prompt (TEMPORARY 모드 프롬프트)
   lib/validation.js               요청 검증 (message / mode / history 제한)
@@ -295,6 +296,16 @@ npm run pages:dev                 # vite build --mode pages → wrangler pages d
   ```
 
 ### 배포 후 확인
+
+**0. 서버 상태 확인 (health)**
+
+| 링크 | 확인 내용 |
+|------|-----------|
+| https://notiai.pages.dev/api/health | Functions 동작 여부, `OPENAI_API_KEY` 설정 여부(true/false), 사용할 모델명 — OpenAI 호출 없음 |
+| https://notiai.pages.dev/api/health?check=openai | 실제로 OpenAI 에 연결해 Key 유효성 + 모델 사용 가능 여부 확인 (모델 조회만 하므로 토큰 비용 없음) |
+
+정상이면 `"status": "ok"`, 문제가 있으면 `"status": "degraded"` 와 `reason` 이 표시됩니다. Key 값은 응답에 절대 포함되지 않습니다.
+
 
 1. `https://notiai.pages.dev/planner` 에서 메시지 전송 → 실제 GPT 응답 표시
 2. 실패하면 Cloudflare Dashboard → 프로젝트 → **Deployments → 해당 배포 → Functions 로그(Real-time Logs)** 에서

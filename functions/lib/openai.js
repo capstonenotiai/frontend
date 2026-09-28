@@ -66,3 +66,30 @@ export async function createPlannerReply(env, { instructions, input }) {
   }
   return text;
 }
+
+/**
+ * OpenAI 연결 확인 (GET /api/health?check=openai).
+ * 모델 정보 조회(models.retrieve)만 하므로 토큰 비용이 들지 않는다.
+ * API Key 가 유효한지 + OPENAI_MODEL 이 이 계정에서 사용 가능한지 확인.
+ *
+ * @returns {Promise<{ ok: boolean, reason?: string, status?: number }>}
+ */
+export async function checkOpenAIConnection(env) {
+  if (!env.OPENAI_API_KEY) return { ok: false, reason: 'OPENAI_API_KEY 가 설정되지 않았습니다.' };
+
+  const client = new OpenAI({ apiKey: env.OPENAI_API_KEY, maxRetries: 0, timeout: 10 * 1000 });
+  try {
+    await client.models.retrieve(env.OPENAI_MODEL || DEFAULT_MODEL);
+    return { ok: true };
+  } catch (error) {
+    const status = error?.status ?? null;
+    console.error('[health] OpenAI check failed', { status, code: error?.code ?? null });
+    const reasons = {
+      401: 'API Key 가 올바르지 않습니다.',
+      403: '이 API Key 로는 접근 권한이 없습니다.',
+      404: '모델을 찾을 수 없습니다. OPENAI_MODEL 값을 확인하세요.',
+      429: '요청 한도 초과 또는 크레딧 부족입니다.',
+    };
+    return { ok: false, status, reason: reasons[status] ?? 'OpenAI 에 연결하지 못했습니다.' };
+  }
+}
