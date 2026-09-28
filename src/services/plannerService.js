@@ -1,15 +1,16 @@
-import { MOCK_CHAT_LATENCY_MS, USE_MOCK } from '../config/app';
+import { MOCK_CHAT_LATENCY_MS, PLANNER_USE_MOCK } from '../config/app';
 import { getAiMode } from '../config/aiModes';
 import { mockActionSuggestions, mockGreetings, mockWeeklyBriefing } from '../data/mockPlanner';
 import { compareByDeadline, enrichEvent } from '../utils/events';
-import { apiRequest, mockResponse } from './apiClient';
+import { ApiError, apiRequest, mockResponse } from './apiClient';
 import { mockStore } from './mockStore';
 
 /**
  * AI 플래너 service.
  *
  * ⚠️ 프론트에서 OpenAI / Claude / Gemini 등 LLM API 를 직접 호출하지 않습니다.
- *    실제 연결 시 백엔드 POST /api/planner/chat 이 모드별 시스템 프롬프트로 LLM 을 호출합니다.
+ *    PLANNER_USE_MOCK=false 이면 POST /api/planner/chat (Cloudflare Pages Function,
+ *    functions/api/planner/chat.js) 이 서버에서 OpenAI 를 호출합니다.
  *
  * Message 형태: { id, role: 'assistant' | 'user', content: string[], createdAt }
  *   content 는 문단 배열, **굵게** 표기만 사용 (components/RichText.jsx)
@@ -34,21 +35,32 @@ export async function getGreeting(modeId) {
 }
 
 /**
- * 메시지 전송 — 향후 POST /api/planner/chat
+ * 메시지 전송 — POST /api/planner/chat
+ *
+ * 계약: message = 이번 사용자 메시지, history = 그 "이전" 대화만 (현재 메시지는 포함하지 않음)
  * @param {{ message: string, modeId: string, history: Array }} params
  * @returns {Promise<Message>} assistant 메시지
  */
 export async function sendMessage({ message, modeId, history }) {
-  if (!USE_MOCK) {
-    const data = await apiRequest('/api/planner/chat', {
-      method: 'POST',
-      body: {
-        message,
-        mode: modeId,
-        history: history.map(({ role, content }) => ({ role, content: content.join('\n\n') })),
-      },
-    });
-    return createMessage('assistant', data.reply ?? data.content ?? '');
+  if (!PLANNER_USE_MOCK) {
+    let data;
+    try {
+      data = await apiRequest('/api/planner/chat', {
+        method: 'POST',
+        body: {
+          message,
+          mode: modeId,
+          history: history.map(({ role, content }) => ({ role, content: content.join('\n\n') })),
+        },
+      });
+    } catch (error) {
+      if (error instanceof ApiError) throw error; // 서버가 준 { message } 를 그대로 표시
+      throw new Error('AI 플래너 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.');
+    }
+    if (!data || typeof data.reply !== 'string' || !data.reply.trim()) {
+      throw new Error('AI 응답 생성에 실패했습니다.');
+    }
+    return createMessage('assistant', data.reply.trim().split(/\n{2,}/));
   }
 
   await mockResponse(null, MOCK_CHAT_LATENCY_MS);

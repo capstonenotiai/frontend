@@ -10,15 +10,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pages:dev": "vite build --mode pages && wrangler pages dev dist --port 8788 --compatibility-date=2026-09-01"
   },
   "dependencies": {
+    "openai": "^7.23.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",
-    "vite": "^8.3.1"
+    "vite": "^8.3.1",
+    "wrangler": "^4.143.0"
   }
 }

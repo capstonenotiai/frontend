@@ -6,6 +6,16 @@
 /** true 면 services 가 mock 데이터를 반환, false 면 실제 API 호출 */
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 
+/**
+ * AI 플래너만 따로 mock / 실제 API 를 전환.
+ * 다른 API(/api/events 등)가 아직 없으므로, 실제 GPT 연결은 VITE_PLANNER_USE_MOCK=false 로 켠다.
+ * 값이 없으면 VITE_USE_MOCK 을 따른다.
+ */
+export const PLANNER_USE_MOCK =
+  import.meta.env.VITE_PLANNER_USE_MOCK === undefined || import.meta.env.VITE_PLANNER_USE_MOCK === ''
+    ? USE_MOCK
+    : import.meta.env.VITE_PLANNER_USE_MOCK !== 'false';
+
 /** 백엔드 API base URL. 비워두면 같은 origin 의 /api/* 로 요청 */
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 

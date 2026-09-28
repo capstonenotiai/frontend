@@ -1,0 +1,6 @@
+# 로컬 Pages Functions(wrangler pages dev)용 서버 환경변수 예시
+# 이 파일을 .dev.vars 로 복사해서 실제 값을 넣으세요. (.dev.vars 는 git 에 올라가지 않습니다)
+# ⚠️ VITE_ 접두사를 붙이지 마세요 — 붙이면 브라우저 번들에 노출될 수 있습니다.
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-6-luna
+# OPENAI_MAX_OUTPUT_TOKENS=800

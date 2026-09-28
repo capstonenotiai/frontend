@@ -8,7 +8,7 @@ import RichText from './RichText';
  * AI 플래너 대화 패널.
  *  - 메시지 기록(history), 입력, 전송, loading / error 상태
  *  - 모드가 바뀌면 원본처럼 새 모드의 인사 메시지로 대화를 초기화
- *  - 실제 LLM 호출은 하지 않음 → services/plannerService.js (mock / 향후 백엔드)
+ *  - LLM 을 직접 호출하지 않음 → services/plannerService.js (mock 또는 POST /api/planner/chat)
  */
 export default function ChatPanel({ mode }) {
   const [messages, setMessages] = useState([]);
@@ -56,9 +56,9 @@ export default function ChatPanel({ mode }) {
     event.preventDefault();
     const text = input.trim();
     if (!text || sending) return;
-    const userMessage = plannerService.createMessage('user', text);
-    const history = [...messages, userMessage];
-    setMessages(history);
+    // history 에는 "이전" 대화만 보낸다 (현재 메시지는 message 로 따로 전달 → 중복 방지)
+    const history = messages;
+    setMessages([...messages, plannerService.createMessage('user', text)]);
     setInput('');
     requestReply(text, history);
   };

@@ -28,6 +28,7 @@ AI Planner로 개인화된 일정 관리·추천을 제공하는 웹 서비스�
 | 빌드 | Vite 8 |
 | 라우팅 | react-router-dom 7 (URL 기반) |
 | 스타일 | 일반 CSS (원본 HTML의 디자인 토큰/클래스 그대로) |
+| 서버 | Cloudflare Pages Functions (`functions/`) + OpenAI JavaScript SDK (Responses API) |
 
 Next.js · Redux · Tailwind · TypeScript · UI 프레임워크는 사용하지 않습니다.
 
@@ -55,7 +56,8 @@ npm run preview    # 빌드 결과 확인 (http://localhost:4173)
 
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
-| `VITE_USE_MOCK` | `true` | `false` 면 services 가 실제 API 호출 |
+| `VITE_USE_MOCK` | `true` | `false` 면 **모든** services 가 실제 API 호출 (일정 API 등이 아직 없으므로 지금은 `true` 유지) |
+| `VITE_PLANNER_USE_MOCK` | (`VITE_USE_MOCK` 을 따름) | `false` 면 **AI 플래너만** 실제 `POST /api/planner/chat` → OpenAI 호출 |
 | `VITE_API_BASE_URL` | (빈 값) | 백엔드 주소. 비우면 같은 origin 의 `/api/*` |
 | `VITE_MOCK_TODAY` | `2026-05-19` | mock 모드에서 "오늘"로 취급할 날짜 (D-day 기준) |
 
@@ -115,6 +117,11 @@ src/
   hooks/                          useAsync, useCalendarMonth
   utils/                          날짜 · D-day · 달력 계산
   styles/                         원본 CSS 를 영역별로 분리 (base, landing, app, dashboard, …)
+functions/                        Cloudflare Pages Functions (서버 측 코드, 브라우저 번들에 포함되지 않음)
+  api/planner/chat.js             POST /api/planner/chat
+  lib/openai.js                   OpenAI Responses API 호출
+  lib/prompts.js                  AI 플래너 system prompt (TEMPORARY 모드 프롬프트)
+  lib/validation.js               요청 검증 (message / mode / history 제한)
 ```
 
 **규칙**: 컴포넌트에서 `fetch` 를 직접 호출하지 않습니다. 항상 `services/*` → (mock 또는 API) 순서로 접근합니다.
@@ -196,7 +203,7 @@ preferences = {
 | 캘린더 등록/해제 | `registered` 값만 변경 (화면 즉시 반영) | `POST /api/calendar/register`, `DELETE /api/calendar/register/:id` → 백엔드가 Google Calendar API 호출 |
 | 전체 등록 | 미등록 일정 일괄 `registered = true` | 위 API 반복 또는 일괄 API |
 | 북마크 | 화면/mock 상태만 변경 | 엔드포인트 미정 |
-| AI 플래너 대화 | 키워드 기반 임시 응답 (0.7초 지연). `/error` 가 포함된 메시지는 에러 상태 확인용 | `POST /api/planner/chat` (백엔드에서 모드별 프롬프트로 LLM 호출) |
+| AI 플래너 대화 | **실제 연결 완료** (`VITE_PLANNER_USE_MOCK=false` 일 때 OpenAI). mock 일 때는 키워드 기반 임시 응답, `/error` 포함 시 에러 상태 확인용 | 일정 데이터를 대화 context 로 추가 (예정) |
 | 7일 브리핑 / AI 액션 제안 | `data/mockPlanner.js` 고정 값 | 미정 |
 | 사용자 · 설정 | `data/mockUser.js`, 저장 시 mock 저장소 갱신 | `GET/PUT /api/user/preferences` |
 | 대외활동 큐레이션 | `data/mockCuration.js` 스냅샷 | 부트캠프 서비스 API |
@@ -214,13 +221,99 @@ mock 상태(`services/mockStore.js`)는 탑바 '새로고침' 후에도 유지�
 
 ---
 
+## AI 플래너 — OpenAI 실제 연결
+
+```
+React ChatPanel → services/plannerService.js
+  → POST /api/planner/chat  (functions/api/planner/chat.js, Cloudflare 서버)
+  → OpenAI Responses API (functions/lib/openai.js)
+  → { reply } → ChatPanel 에 표시
+```
+
+- OpenAI 호출은 **Cloudflare 서버 측에서만** 실행됩니다. 브라우저는 OpenAI 를 직접 호출하지 않고, API Key 도 볼 수 없습니다.
+- system prompt 는 서버(`functions/lib/prompts.js`)에서만 관리합니다. 프론트는 모드 id(`study`/`explorer`/`balanced`)만 보냅니다.
+  Study / Explorer / Balanced 프롬프트는 **임시(TEMPORARY)** 이며, 이 파일만 교체하면 됩니다.
+- 옵션: `store: false`, `max_output_tokens: 800` (환경변수 `OPENAI_MAX_OUTPUT_TOKENS` 로 변경 가능), 스트리밍 없음.
+
+### API 계약
+
+```jsonc
+// POST /api/planner/chat
+{
+  "message": "이번 주에 뭐부터 챙겨야 해?",   // 이번 사용자 메시지 (1~3000자)
+  "mode": "study",                          // 모르는 값이면 서버가 study 로 처리
+  "history": [                              // "이전" 대화만 (현재 message 는 포함하지 않음)
+    { "role": "assistant", "content": "..." },
+    { "role": "user", "content": "..." }
+  ]
+}
+// 200 → { "reply": "..." }
+// 400 (빈 메시지·형식 오류·3000자 초과) / 405 (POST 외) / 413 (본문 64KB 초과)
+// 500 (서버 설정 누락) / 502 (OpenAI 오류) / 503 (OpenAI 요청 한도 초과) → { "message": "..." }
+```
+
+서버 검증: `history` 는 최근 12개만, 각 2000자까지 사용. `user` / `assistant` 외의 role(system, developer 등)은 무시합니다.
+
+### Cloudflare Pages 설정 (Dashboard)
+
+프로젝트 → **Settings → Variables and Secrets** (Production, 필요하면 Preview 에도 동일하게)
+
+| 종류 | 이름 | 값 | 용도 |
+|------|------|-----|------|
+| **Secret** | `OPENAI_API_KEY` | OpenAI API Key | 서버(Functions) 전용 |
+| Variable | `OPENAI_MODEL` | `gpt-6-luna` | 선택. 비우면 기본값 `gpt-6-luna` |
+| Variable | `OPENAI_MAX_OUTPUT_TOKENS` | `800` | 선택 |
+| Variable (빌드용) | `VITE_PLANNER_USE_MOCK` | `false` | 프론트 빌드 시 AI 플래너를 실제 API 로 전환 |
+
+> ⚠️ `OPENAI_API_KEY` 에는 **절대 `VITE_` 접두사를 붙이지 마세요.** `VITE_` 값은 브라우저 번들에 그대로 들어갑니다.
+>
+> 💡 `VITE_USE_MOCK=false` 를 쓰면 AI 플래너뿐 아니라 일정·대시보드·설정까지 실제 API(`/api/events` 등, 아직 없음)를 호출해 화면이 비게 됩니다.
+> 지금은 **`VITE_PLANNER_USE_MOCK=false` 만** 설정하세요. 다른 API 가 생기면 그때 `VITE_USE_MOCK=false` 로 바꾸면 됩니다.
+
+`VITE_*` 는 **빌드할 때** 들어가는 값이므로, 설정 후 **Deployments → 최신 배포 → Retry deployment**(또는 새 push)로 다시 빌드해야 적용됩니다.
+`OPENAI_*` 는 서버 런타임 값이라 재배포 후 바로 적용됩니다.
+
+### 로컬 테스트 (Pages Functions 포함)
+
+`npm run dev`(vite) 만으로는 `functions/` 가 실행되지 않습니다. Wrangler 로 Cloudflare Pages 환경을 로컬에서 띄웁니다.
+
+```bash
+cp .dev.vars.example .dev.vars    # 로컬 서버 비밀값 (git 에 올라가지 않음)
+# .dev.vars 에 OPENAI_API_KEY=sk-... 입력
+
+npm run pages:dev                 # vite build --mode pages → wrangler pages dev dist (http://localhost:8788)
+```
+
+- `--mode pages` 는 `.env.pages`(`VITE_PLANNER_USE_MOCK=false`, 공개 값만)를 읽어 AI 플래너만 실제 API 로 빌드합니다.
+- 화면을 고치면서 테스트하려면: 터미널 1 `npm run pages:dev`, 터미널 2 `npx vite --mode pages` (Windows 포함 공통)
+  → vite(5173)가 `/api/*` 요청을 8788 로 전달합니다 (`vite.config.js` proxy).
+- API 만 확인:
+  ```bash
+  curl -X POST http://localhost:8788/api/planner/chat \
+    -H 'Content-Type: application/json' \
+    -d '{"message":"이번 주에 뭐부터 챙겨야 해?","mode":"study","history":[]}'
+  ```
+
+### 배포 후 확인
+
+1. `https://notiai.pages.dev/planner` 에서 메시지 전송 → 실제 GPT 응답 표시
+2. 실패하면 Cloudflare Dashboard → 프로젝트 → **Deployments → 해당 배포 → Functions 로그(Real-time Logs)** 에서
+   `[planner/chat]` 로그 확인 (status/code 만 기록, Key·원문 오류는 기록하지 않음)
+   - `AI 플래너 서버 설정이 완료되지 않았습니다.` → `OPENAI_API_KEY` Secret 누락
+   - `AI 응답 생성에 실패했습니다.` → Key 오류, 모델 이름(`OPENAI_MODEL`) 오류, 크레딧 부족 등
+3. 여전히 mock 응답("데모(mock) 응답")이 나오면 `VITE_PLANNER_USE_MOCK=false` 설정 후 재빌드했는지 확인
+
+---
+
 ## 앞으로 연결할 기능
 
 - [ ] 백엔드 API 명세 확정 후 `services` 실제 호출로 교체
 - [ ] model repo 추출 결과(`final_prediction`, `auto_register_status`) 저장 파이프라인과 `GET /api/events` 연결
 - [ ] `needs_review` 일정 검토 UI (자동 등록 vs 검토 후 등록)
 - [ ] Google OAuth 로그인 / Google Calendar 실제 등록 (백엔드)
-- [ ] AI 플래너 다중 프롬프트 모드 최종 확정 → `config/aiModes.js` 교체, `POST /api/planner/chat` 연결
+- [x] AI 플래너 `POST /api/planner/chat` → OpenAI 실제 연결 (단순 채팅)
+- [ ] AI 플래너에 일정 데이터를 대화 context 로 추가
+- [ ] 다중 프롬프트 모드 최종 확정 → `config/aiModes.js` + `functions/lib/prompts.js` 교체
 - [ ] 관심 분야(WHAT) 설정 / 온보딩 노출
 - [ ] 캘린더 주/일 보기, 7일 브리핑 주 이동, 일정 직접 추가
 - [ ] 반응형(모바일) 레이아웃

@@ -125,6 +125,7 @@
 /* AI 플래너 대화 기록 */
 .ai-chat-messages { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; }
 .ai-chat-bubble p + p { margin-top: 1.7em; } /* 원본의 <br><br> 문단 간격 */
+.ai-chat-bubble p { white-space: pre-line; } /* GPT 응답의 줄바꿈(목록 등) 유지 */
 .ai-chat-bubble.user { align-self: flex-end; max-width: 80%; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 10px 14px; }
 .ai-chat-bubble.assistant { align-self: stretch; }
 .ai-chat-bubble.loading { color: var(--t3); font-family: var(--mono); font-size: 12px; align-self: flex-start; }
