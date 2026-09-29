@@ -32,14 +32,11 @@ export async function getEvents() {
   return data.map(normalizeEvent);
 }
 
-/**
- * 북마크 설정.
- * TODO: 북마크 API 는 아직 정해지지 않음. 실제 API 모드에서는 화면 상태만 바뀐다.
- */
+/** 북마크 설정 — PUT /api/events/:id/bookmark */
 export async function setBookmark(id, bookmarked) {
   if (USE_MOCK) {
     updateMockEvent(id, { bookmarked });
     return mockResponse({ id, bookmarked });
   }
-  return { id, bookmarked };
+  return apiRequest(`/api/events/${encodeURIComponent(id)}/bookmark`, { method: 'PUT', body: { bookmarked } });
 }

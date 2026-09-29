@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogoMark } from '../components/icons';
 import { AI_MODES, DEFAULT_AI_MODE_ID } from '../config/aiModes';
-import { GITHUB_URL } from '../config/app';
+import { API_BASE_URL, GITHUB_URL, USE_MOCK } from '../config/app';
 import { SOURCES } from '../config/sources';
 
 /* 랜딩 페이지 소개용 정적 예시 데이터 (실제 데이터 아님) */
@@ -68,7 +68,12 @@ export default function LandingPage() {
   const containerRef = useRef(null);
   useScrollReveal(containerRef);
 
-  const start = () => navigate('/dashboard');
+  // mock 모드: 바로 대시보드 / 실제 API 모드: 백엔드 Google 로그인 → 완료 후 /dashboard 로 돌아옴
+  const start = () => {
+    if (USE_MOCK) navigate('/dashboard');
+    else window.location.href = `${API_BASE_URL}/api/auth/google/login`;
+  };
+  const openDemo = () => navigate('/dashboard');
   const scrollTo = (id) => (event) => {
     event.preventDefault();
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -121,11 +126,10 @@ export default function LandingPage() {
           CBNU, Wevity, ContestKorea의 공지와 공모전을 AI가 자동 수집·분석하여 Google Calendar에 바로 등록합니다.
         </p>
         <div className="hero-btns">
-          {/* TODO: Google OAuth 연동 후 실제 로그인으로 교체 */}
           <button type="button" className="btn-dk" onClick={start}>
             Google로 시작하기
           </button>
-          <button type="button" className="btn-gh" onClick={start}>
+          <button type="button" className="btn-gh" onClick={openDemo}>
             데모 보기
           </button>
         </div>
