@@ -83,6 +83,15 @@ tr.deadline td.when, tr.deadline .goal { color: var(--crit); }
 .box.direction h3 { color: var(--accent); }
 .box ul { margin: 0; padding-left: 18px; color: var(--t2); font-size: 13.5px; display: flex; flex-direction: column; gap: 6px; }
 .box b { color: var(--text); font-weight: 600; }
+.eg { color: var(--t3); font-size: 12.5px; }
+.weights { min-width: 0; width: 100%; margin-top: 8px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 8px; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.weights th, .weights td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; background: none; }
+.weights thead th { font-size: 11px; color: var(--t3); background: var(--surface-2); }
+.weights tbody th { text-align: left; color: var(--text); font-weight: 600; font-size: 12px; white-space: nowrap; }
+.weights tbody tr:last-child th, .weights tbody tr:last-child td { border-bottom: none; }
+.weights td { font-family: var(--mono); color: var(--t2); font-variant-numeric: tabular-nums; }
+.weights td.hi { color: var(--accent); font-weight: 600; background: var(--accent-soft); }
+.redesign { grid-template-columns: 1fr 1.25fr; align-items: start; }
 footer { color: var(--t3); font-size: 12px; font-family: var(--mono); }
 @media (max-width: 640px) { .redesign { grid-template-columns: 1fr; } }
 </style>
@@ -124,7 +133,18 @@ footer { color: var(--t3); font-size: 12px; font-family: var(--mono); }
         <h3>재설계 방향</h3>
         <ul>
           <li>무엇을 보여 줄지(<b>관심 분야, WHAT</b>)는 사용자 설정으로 분리</li>
-          <li>모드는 어떤 관점으로 판단할지(<b>AI 판단 방식, HOW</b>)로 재구성해, 모드마다 우선순위와 추천 이유를 서로 다른 기준으로 판단</li>
+          <li>일정을 평가하는 <b>여러 판단 기준</b>을 둠<br><span class="eg">예: 마감 임박도, 관심 분야 일치도, 혜택·보상 규모, 준비 부담</span></li>
+          <li><b>기준마다 가중치를 숫자로 다르게</b> 줘서 모드 3개로 구성 <span class="eg">(예시)</span>
+            <table class="weights">
+              <thead><tr><th></th><th>마감 임박도</th><th>관심 분야</th><th>혜택</th><th>준비 부담</th></tr></thead>
+              <tbody>
+                <tr><th>모드 1</th><td class="hi">5</td><td>3</td><td>2</td><td>2</td></tr>
+                <tr><th>모드 2</th><td>2</td><td>3</td><td class="hi">5</td><td>1</td></tr>
+                <tr><th>모드 3</th><td>3</td><td>2</td><td>1</td><td class="hi">5</td></tr>
+              </tbody>
+            </table>
+          </li>
+          <li>기준과 가중치 값은 10월 1주차에 확정</li>
         </ul>
       </div>
     </div>
