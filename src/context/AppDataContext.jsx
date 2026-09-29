@@ -67,7 +67,8 @@ export function AppDataProvider({ children }) {
   );
 
   const registerAll = useCallback(() => {
-    const ids = eventsRef.current.filter((event) => !event.registered).map((event) => event.id);
+    // 마감일이 없는 일정(날짜 검토 필요)은 서버가 등록을 거부 → 하나라도 섞이면 전체가 되돌려지므로 제외
+    const ids = eventsRef.current.filter((event) => !event.registered && event.end_date).map((event) => event.id);
     if (ids.length === 0) return Promise.resolve();
     return patchEvents(ids, { registered: true }, () => calendarService.registerEvents(ids));
   }, [patchEvents]);
