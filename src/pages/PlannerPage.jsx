@@ -3,6 +3,7 @@ import Card from '../components/Card';
 import ChatPanel from '../components/ChatPanel';
 import ModeSelector from '../components/ModeSelector';
 import { AI_MODES } from '../config/aiModes';
+import { getOverallCrawlStatus } from '../config/crawlStatus';
 import { getSource } from '../config/sources';
 import { useAppData } from '../context/AppDataContext';
 import { useUser } from '../context/UserContext';
@@ -66,7 +67,14 @@ export default function PlannerPage() {
         </Card>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Card title="수집 현황" headerRight={<Badge tone="green">✓ 완료</Badge>}>
+          <Card
+            title="수집 현황"
+            headerRight={
+              <Badge tone={getOverallCrawlStatus(summary?.sources).tone}>
+                {getOverallCrawlStatus(summary?.sources).label}
+              </Badge>
+            }
+          >
             {(summary?.sources ?? []).map((item) => (
               <div className="cc-row" key={item.source}>
                 <div className="cc-name">{getSource(item.source).label}</div>

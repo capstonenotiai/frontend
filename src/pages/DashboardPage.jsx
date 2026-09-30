@@ -8,6 +8,7 @@ import NewEventItem from '../components/NewEventItem';
 import StatCard from '../components/StatCard';
 import { ClockIcon, NewIcon } from '../components/icons';
 import { URGENCY_DAYS } from '../config/app';
+import { getCrawlStatus, getOverallCrawlStatus } from '../config/crawlStatus';
 import { getSource } from '../config/sources';
 import { useAppData } from '../context/AppDataContext';
 import { useUser } from '../context/UserContext';
@@ -62,7 +63,13 @@ export default function DashboardPage() {
 
       <Card
         title="오늘의 수집 현황"
-        headerRight={summary && <Badge tone="green">✓ 수집 완료 · {summary.collectionFinishedAt}</Badge>}
+        headerRight={
+          summary && (
+            <Badge tone={getOverallCrawlStatus(summary.sources).tone}>
+              {getOverallCrawlStatus(summary.sources).label} · {summary.collectionFinishedAt}
+            </Badge>
+          )
+        }
         style={{ marginBottom: 16 }}
         bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 8 }}
       >
@@ -76,8 +83,8 @@ export default function DashboardPage() {
                 <div className="src-bar" style={{ width: `${item.progress}%`, background: source.color }} />
               </div>
               <div className="src-count">{item.count}건</div>
-              <Badge tone="green" style={{ fontSize: 10 }}>
-                {item.status === 'done' ? '완료' : '수집 중'}
+              <Badge tone={getCrawlStatus(item.status).tone} style={{ fontSize: 10 }}>
+                {getCrawlStatus(item.status).label}
               </Badge>
             </div>
           );

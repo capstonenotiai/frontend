@@ -29,7 +29,7 @@ export const MOCK_TODAY = import.meta.env.VITE_MOCK_TODAY || '2026-05-19';
 export const MOCK_LATENCY_MS = 0;
 export const MOCK_CHAT_LATENCY_MS = 700;
 
-export const GITHUB_URL = 'https://github.com/jaeyeongt/NotiAi';
+export const GITHUB_URL = 'https://github.com/capstonenotiai';
 
 /** AI 플래너 헤더 표시 정보 (백엔드 연결 후 실제 모델 정보로 교체) */
 export const PLANNER_ASSISTANT = {
