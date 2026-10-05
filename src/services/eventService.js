@@ -44,6 +44,17 @@ export async function getEvents() {
   return data.map(normalizeEvent);
 }
 
+export async function getEventDetail(id) {
+  if (USE_MOCK) {
+    const anchor = mockStore.events.find((event) => String(event.id) === String(id));
+    const events = anchor ? mockStore.events.filter((event) =>
+      (String(event.id) === String(id) || (anchor.notice_id != null && event.notice_id === anchor.notice_id)) && event.event_type !== 'result') : [];
+    return { notice_id: anchor?.notice_id ?? null, events: events.map(normalizeEvent) };
+  }
+  const data = await apiRequest(`/api/events/${encodeURIComponent(id)}`);
+  return { ...data, events: data.events.map(normalizeEvent) };
+}
+
 /** 북마크 설정 — PUT /api/events/:id/bookmark */
 export async function setBookmark(id, bookmarked) {
   if (USE_MOCK) {

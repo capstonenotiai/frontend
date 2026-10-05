@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import EmptyState from '../components/EmptyState';
 import EventCard from '../components/EventCard';
+import EventDetailPanel from '../components/EventDetailPanel';
 import { SOURCES, getSourceOrder } from '../config/sources';
 import { useAppData } from '../context/AppDataContext';
 import { compareByDeadline } from '../utils/events';
@@ -43,7 +44,9 @@ function FilterGroup({ options, value, onChange, style }) {
 }
 
 export default function SchedulesPage() {
-  const { events, status, toggleRegister, toggleBookmark } = useAppData();
+  const { events, status, toggleRegister, toggleBookmark, actionBusy } = useAppData();
+  const [selectedId, setSelectedId] = useState(null);
+  const selectedEvent = events.find((event) => event.id === selectedId);
   const [sourceFilter, setSourceFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState('deadline');
@@ -61,7 +64,7 @@ export default function SchedulesPage() {
     <>
       <div className="page-header">
         <div className="page-title">일정 목록</div>
-        <div className="page-sub">AI가 수집한 모든 일정을 관리하세요</div>
+        <div className="page-sub">공지별 가장 가까운 접수 마감을 확인하세요. 제목을 누르면 전체 일정이 열립니다.</div>
       </div>
 
       <div className="filter-bar">
@@ -83,6 +86,8 @@ export default function SchedulesPage() {
           <EventCard
             key={event.id}
             event={event}
+            busy={actionBusy}
+            onSelect={() => setSelectedId(event.id)}
             onToggleRegister={() => toggleRegister(event.id)}
             onToggleBookmark={() => toggleBookmark(event.id)}
           />
@@ -91,6 +96,7 @@ export default function SchedulesPage() {
           <EmptyState>{status === 'loading' ? '불러오는 중…' : '조건에 맞는 일정이 없습니다.'}</EmptyState>
         )}
       </div>
+      <EventDetailPanel event={selectedEvent} onClose={() => setSelectedId(null)} />
     </>
   );
 }

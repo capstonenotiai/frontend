@@ -1,6 +1,7 @@
 import { USE_MOCK } from '../config/app';
 import { apiRequest, mockResponse } from './apiClient';
-import { updateMockEvent } from './mockStore';
+import { mockStore, updateMockEvent } from './mockStore';
+import { normalizeEvent } from './eventService';
 
 /**
  * Google Calendar 등록.
@@ -32,4 +33,15 @@ export async function registerEvents(ids) {
 
 export async function syncEvent(id) {
   return apiRequest(`/api/calendar/sync/${encodeURIComponent(id)}`, { method: 'POST' });
+}
+
+export async function getRegisteredEvents() {
+  const data = USE_MOCK ? await mockResponse(mockStore.events.filter((event) => event.registered && event.event_type !== 'result'))
+    : await apiRequest('/api/calendar/events');
+  return data.map(normalizeEvent);
+}
+
+export async function registerInterview(id) {
+  if (USE_MOCK) { updateMockEvent(id, { registered: true }); return mockResponse({ id, registered: true }); }
+  return apiRequest(`/api/calendar/interviews/${encodeURIComponent(id)}`, { method: 'POST' });
 }

@@ -1,0 +1,5 @@
+.notice-detail-link { background: none; border: none; padding: 0; text-align: left; color: inherit; cursor: pointer; font: inherit; }
+.notice-detail-link:hover, .notice-detail-link:focus-visible { text-decoration: underline; }
+.notice-events { padding: 0; list-style: none; display: grid; gap: 12px; }
+.notice-events li { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.notice-events p { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--t2); margin: 6px 0; }

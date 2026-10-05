@@ -13,6 +13,9 @@ const AppDataContext = createContext(null);
 
 export function AppDataProvider({ children }) {
   const [events, setEvents] = useState([]);
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [actionBusy, setActionBusy] = useState(false);
+  const actionLock = useRef(false);
   const [summary, setSummary] = useState(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [error, setError] = useState(null);
@@ -24,12 +27,14 @@ export function AppDataProvider({ children }) {
     setStatus('loading');
     setError(null);
     try {
-      const [nextEvents, nextSummary] = await Promise.all([
+      const [nextEvents, nextSummary, nextCalendar] = await Promise.all([
         eventService.getEvents(),
         dashboardService.getDashboardSummary(),
+        calendarService.getRegisteredEvents(),
       ]);
       setEvents(nextEvents);
       setSummary(nextSummary);
+      setCalendarEvents(nextCalendar);
       setStatus('ready');
     } catch (err) {
       setError(err);
@@ -41,18 +46,25 @@ export function AppDataProvider({ children }) {
     refresh();
   }, [refresh]);
 
-  /** 낙관적 업데이트: 화면을 먼저 바꾸고 실패하면 되돌린다 */
-  const patchEvents = useCallback(async (ids, patch, request) => {
-    const previous = eventsRef.current;
+  // Bundle writes can partially succeed in Google. Always reload the server's actual state.
+  const runAction = useCallback(async (request) => {
+    if (actionLock.current) return false;
+    actionLock.current = true;
+    setActionBusy(true);
     setActionError(null);
-    setEvents((current) => current.map((event) => (ids.includes(event.id) ? { ...event, ...patch } : event)));
     try {
       await request();
+      await refresh();
+      return true;
     } catch (err) {
-      setEvents(previous);
+      await refresh();
       setActionError(err);
+      return false;
+    } finally {
+      actionLock.current = false;
+      setActionBusy(false);
     }
-  }, []);
+  }, [refresh]);
 
   const toggleRegister = useCallback(
     (id) => {
@@ -60,19 +72,19 @@ export function AppDataProvider({ children }) {
       if (!event) return;
       const registered = !event.registered;
       if (registered && !event.can_register) { setActionError(new Error(event.registration_reason || '등록할 수 없는 일정입니다.')); return; }
-      patchEvents([id], { registered }, () =>
+      return runAction(() =>
         registered ? calendarService.registerEvent(id) : calendarService.unregisterEvent(id),
       );
     },
-    [patchEvents],
+    [runAction],
   );
 
   const registerAll = useCallback(() => {
     // 마감일이 없는 일정(날짜 검토 필요)은 서버가 등록을 거부 → 하나라도 섞이면 전체가 되돌려지므로 제외
     const ids = eventsRef.current.filter((event) => !event.registered && event.can_register).map((event) => event.id);
     if (ids.length === 0) return Promise.resolve();
-    return patchEvents(ids, { registered: true }, () => calendarService.registerEvents(ids));
-  }, [patchEvents]);
+    return runAction(async () => { for (const id of ids) await calendarService.registerEvent(id); });
+  }, [runAction]);
 
   const syncEvent = useCallback(async (id) => {
     setActionError(null);
@@ -85,20 +97,28 @@ export function AppDataProvider({ children }) {
       const event = eventsRef.current.find((item) => item.id === id);
       if (!event) return;
       const bookmarked = !event.bookmarked;
-      patchEvents([id], { bookmarked }, () => eventService.setBookmark(id, bookmarked));
+      return runAction(() => eventService.setBookmark(id, bookmarked));
     },
-    [patchEvents],
+    [runAction],
   );
+
+  const registerInterview = useCallback((id) => runAction(() => calendarService.registerInterview(id)), [runAction]);
+  const unregisterDetailEvent = useCallback((id) => runAction(() => calendarService.unregisterEvent(id)), [runAction]);
 
   // D-day, 임박도 등 화면용 파생 값
   const enrichedEvents = useMemo(() => {
     const today = getToday();
     return events.map((event) => enrichEvent(event, today));
   }, [events]);
+  const enrichedCalendar = useMemo(() => calendarEvents.map((event) => enrichEvent(event, getToday())), [calendarEvents]);
 
   const value = useMemo(
     () => ({
       events: enrichedEvents,
+      calendarEvents: enrichedCalendar,
+      actionBusy,
+      registerInterview,
+      unregisterDetailEvent,
       summary,
       status,
       error,
@@ -109,7 +129,7 @@ export function AppDataProvider({ children }) {
       registerAll,
       syncEvent,
     }),
-    [enrichedEvents, summary, status, error, actionError, refresh, toggleRegister, toggleBookmark, registerAll, syncEvent],
+    [enrichedEvents, enrichedCalendar, actionBusy, registerInterview, unregisterDetailEvent, summary, status, error, actionError, refresh, toggleRegister, toggleBookmark, registerAll, syncEvent],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

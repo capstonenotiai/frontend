@@ -7,7 +7,7 @@ import EventReviewStatus from './EventReviewStatus';
 const URGENCY_CARD_CLASS = { hot: 'urgent', warm: 'warn-card' };
 const URGENCY_DDAY_CLASS = { hot: 'hot', warm: 'warm', cool: 'cool', far: 'far', past: 'far', none: 'far' };
 
-export default function EventCard({ event, onToggleRegister, onToggleBookmark }) {
+export default function EventCard({ event, onToggleRegister, onToggleBookmark, onSelect, busy = false }) {
   return (
     <div className={`sched-card ${URGENCY_CARD_CLASS[event.urgency] ?? ''}`.trim()}>
       <div className="sc-left">
@@ -15,7 +15,7 @@ export default function EventCard({ event, onToggleRegister, onToggleBookmark })
       </div>
       <div className="sc-body">
         <div className="sc-title-row">
-          <span className="sc-name">{event.title}</span>
+          <button type="button" className="sc-name notice-detail-link" onClick={onSelect}>{event.title}</button>
           <SourceBadge source={event.source} />
           {event.is_new && <span className="sc-new">NEW</span>}
         </div>
@@ -26,9 +26,10 @@ export default function EventCard({ event, onToggleRegister, onToggleBookmark })
         <EventReviewStatus event={event} />
       </div>
       <div className="sc-right">
-        <RegisterButton variant="full" registered={event.registered} onToggle={onToggleRegister} disabled={!event.registered && !event.can_register} reason={event.registration_reason} />
+        <RegisterButton variant="full" registered={event.registered} onToggle={onToggleRegister} disabled={busy || (!event.registered && !event.can_register)} reason={event.registration_reason || '면접을 제외한 공지의 일정을 함께 등록합니다.'} />
         <button
           type="button"
+          disabled={busy}
           className={`bookmark-btn ${event.bookmarked ? 'on' : ''}`.trim()}
           aria-pressed={event.bookmarked}
           aria-label={event.bookmarked ? '북마크 해제' : '북마크'}

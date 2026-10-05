@@ -13,7 +13,7 @@ const VIEW_MODES = [
 ];
 
 export default function CalendarPage() {
-  const { events } = useAppData();
+  const { calendarEvents: events } = useAppData();
   const { year, month, goPrev, goNext, goToday } = useCalendarMonth();
   // { type: 'event', id } | { type: 'day', date } | null
   const [selection, setSelection] = useState(null);

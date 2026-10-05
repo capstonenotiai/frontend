@@ -7,7 +7,7 @@ import '../styles/admin.css';
 const defaults = { title: '', start_date: '', end_date: '', start_time: '', end_time: '', timezone: 'Asia/Seoul', location: '', detail: '', event_type: 'event', attendance_mode: 'unknown', schedule_status: 'confirmed' };
 const fields = { title: '일정 제목', start_date: '시작일', end_date: '종료일 / 마감일', start_time: '시작 시각', end_time: '종료 / 마감 시각', timezone: '시간대', location: '물리적 장소', detail: '상세 내용' };
 const choices = {
-  event_type: ['일정 종류', { application: '접수', submission: '제출', event: '본행사', result: '결과 발표', service_change: '서비스 변경' }],
+  event_type: ['일정 종류', { application: '접수', submission: '제출', event: '본행사', interview: '면접', orientation: '발대식', result: '결과 발표 (서비스에서 제외)', service_change: '서비스 변경' }],
   attendance_mode: ['참여 방식', { unknown: '확인 필요', offline: '오프라인', online: '온라인', hybrid: '온·오프라인', not_applicable: '해당 없음' }],
   schedule_status: ['진행 상태', { confirmed: '확정', tentative: '예정', cancelled: '취소', unknown: '확인 필요' }],
 };

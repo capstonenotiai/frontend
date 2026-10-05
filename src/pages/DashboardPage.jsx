@@ -16,14 +16,14 @@ import { compareByDeadline, isDueWithin, shortTitle } from '../utils/events';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { events, summary, status, toggleRegister } = useAppData();
+  const { events, calendarEvents, summary, status, toggleRegister } = useAppData();
   const { profile, activeMode } = useUser();
 
   const sorted = [...events].sort(compareByDeadline);
   const dueSoon = sorted.filter((event) => isDueWithin(event, URGENCY_DAYS.warm));
   const newEvents = sorted.filter((event) => event.is_new);
   const hottest = sorted.find((event) => event.urgency === 'hot');
-  const registeredCount = events.filter((event) => event.registered).length;
+  const registeredCount = calendarEvents.length;
   const newUnregisteredCount = newEvents.filter((event) => !event.registered).length;
   const loading = status === 'loading' && events.length === 0;
 
@@ -119,7 +119,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="db-side">
-          <MiniCalendar events={events} />
+          <MiniCalendar events={calendarEvents} />
 
           <div className="ai-preview">
             <div className="ai-preview-tag">// AI PLANNER</div>

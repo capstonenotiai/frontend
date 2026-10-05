@@ -13,14 +13,14 @@ export default function RegisterButton({ registered, onToggle, variant = 'compac
   if (variant === 'full') {
     return (
       <button type="button" disabled={disabled} title={reason} className={`btn-reg ${registered ? 'done' : 'active'}`} onClick={handleClick}>
-        {registered ? '등록됨' : '캘린더 등록'}
+        {registered ? '공지 등록됨' : '공지 일정 등록'}
       </button>
     );
   }
 
   return (
     <button type="button" disabled={disabled} title={reason} className={`btn-register ${registered ? 'done' : ''}`.trim()} onClick={handleClick}>
-      {registered ? '등록됨' : '등록하기'}
+      {registered ? '등록됨' : '함께 등록'}
     </button>
   );
 }
