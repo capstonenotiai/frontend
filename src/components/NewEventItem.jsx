@@ -2,6 +2,7 @@ import { URGENCY_PILL_TONE, formatRange } from '../utils/date';
 import Badge from './Badge';
 import RegisterButton from './RegisterButton';
 import SourceBadge from './SourceBadge';
+import EventReviewStatus from './EventReviewStatus';
 
 /** 대시보드 '신규 수집 일정' 한 줄 (.new-item) */
 export default function NewEventItem({ event, onToggleRegister }) {
@@ -11,10 +12,11 @@ export default function NewEventItem({ event, onToggleRegister }) {
       <div className="new-info">
         <div className="new-name">{event.title}</div>
         <div className="new-period">{formatRange(event.start_date, event.end_date)}</div>
+        <EventReviewStatus event={event} />
       </div>
       <div className="new-r">
         <Badge tone={URGENCY_PILL_TONE[event.urgency]}>{event.dday}</Badge>
-        <RegisterButton registered={event.registered} onToggle={onToggleRegister} />
+        <RegisterButton registered={event.registered} onToggle={onToggleRegister} disabled={!event.registered && !event.can_register} reason={event.registration_reason} />
       </div>
     </div>
   );

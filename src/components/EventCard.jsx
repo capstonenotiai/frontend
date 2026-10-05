@@ -1,6 +1,7 @@
 import { formatRange } from '../utils/date';
 import RegisterButton from './RegisterButton';
 import SourceBadge from './SourceBadge';
+import EventReviewStatus from './EventReviewStatus';
 
 /** 일정 목록 카드 (.sched-card) */
 const URGENCY_CARD_CLASS = { hot: 'urgent', warm: 'warn-card' };
@@ -22,9 +23,10 @@ export default function EventCard({ event, onToggleRegister, onToggleBookmark })
           <span className="sc-meta-item">{formatRange(event.start_date, event.end_date, { compact: true })}</span>
           {event.location && <span className="sc-meta-item">{event.location}</span>}
         </div>
+        <EventReviewStatus event={event} />
       </div>
       <div className="sc-right">
-        <RegisterButton variant="full" registered={event.registered} onToggle={onToggleRegister} />
+        <RegisterButton variant="full" registered={event.registered} onToggle={onToggleRegister} disabled={!event.registered && !event.can_register} reason={event.registration_reason} />
         <button
           type="button"
           className={`bookmark-btn ${event.bookmarked ? 'on' : ''}`.trim()}

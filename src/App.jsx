@@ -8,6 +8,7 @@ import LandingPage from './pages/LandingPage';
 import PlannerPage from './pages/PlannerPage';
 import SchedulesPage from './pages/SchedulesPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminReviewPage from './pages/AdminReviewPage';
 
 /**
  * 라우팅
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/curation" element={<CurationPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin/review" element={<AdminReviewPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

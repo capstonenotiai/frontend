@@ -1,6 +1,7 @@
 import { getSource } from '../config/sources';
 import { URGENCY_PILL_TONE, formatMonthDay, parseDate } from '../utils/date';
 import Badge from './Badge';
+import EventReviewStatus from './EventReviewStatus';
 
 /** 캘린더 하단 상세 패널 (.cal-detail) — 일정 상세 또는 '일정 없음' */
 export default function EventDetailPanel({ event, date, onClose }) {
@@ -47,11 +48,9 @@ export default function EventDetailPanel({ event, date, onClose }) {
         {event.location && ` · ${event.location}`}
       </div>
       <div className="cal-detail-ai">
-        <b>AI 요약</b> ·{' '}
-        {event.detail ||
-          '파인튜닝된 모델이 이 공지의 시작일, 종료일, 장소, 세부 정보를 자동으로 추출했습니다.'}{' '}
-        마감이 가까워지면 D-7·D-3 알림이 자동으로 발송됩니다.
+        <b>일정 안내</b> · {event.detail || '상세 내용은 원문 공지를 확인하세요.'}
       </div>
+      <EventReviewStatus event={event} />
     </div>
   );
 }

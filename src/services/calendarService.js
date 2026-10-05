@@ -29,3 +29,7 @@ export async function unregisterEvent(id) {
 export async function registerEvents(ids) {
   return Promise.all(ids.map((id) => registerEvent(id)));
 }
+
+export async function syncEvent(id) {
+  return apiRequest(`/api/calendar/sync/${encodeURIComponent(id)}`, { method: 'POST' });
+}

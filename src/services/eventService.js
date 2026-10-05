@@ -23,6 +23,18 @@ export function normalizeEvent(raw) {
     bookmarked: Boolean(raw.bookmarked),
     collected_at: raw.collected_at ?? null,
     review_status: raw.review_status ?? raw.auto_register_status ?? null,
+    notice_id: raw.notice_id ?? null,
+    event_type: raw.event_type ?? 'event',
+    start_time: raw.start_time ?? '',
+    end_time: raw.end_time ?? '',
+    timezone: raw.timezone ?? 'Asia/Seoul',
+    attendance_mode: raw.attendance_mode ?? 'unknown',
+    schedule_status: raw.schedule_status ?? 'confirmed',
+    review_reason: raw.review_reason ?? '',
+    revision: raw.revision ?? 1,
+    can_register: raw.can_register ?? (USE_MOCK && Boolean(raw.end_date)),
+    registration_reason: raw.registration_reason ?? '',
+    sync_status: raw.sync_status ?? 'none',
   };
 }
 

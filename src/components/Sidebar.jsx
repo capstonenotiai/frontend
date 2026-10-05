@@ -29,7 +29,7 @@ export default function Sidebar() {
           {index > 0 && <div className="sb-divider" />}
           <div className="sb-section">{section.label}</div>
           <nav className="sb-nav">
-            {APP_PAGES.filter((page) => page.section === section.id).map((page) => {
+            {APP_PAGES.filter((page) => page.section === section.id && (!page.adminOnly || profile.is_admin)).map((page) => {
               const badge = page.badge ? badgeValues[page.badge] : null;
               return (
                 <NavLink
