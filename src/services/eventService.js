@@ -35,12 +35,18 @@ export function normalizeEvent(raw) {
     can_register: raw.can_register ?? (USE_MOCK && Boolean(raw.end_date)),
     registration_reason: raw.registration_reason ?? '',
     sync_status: raw.sync_status ?? 'none',
+    ai_extracted: Boolean(raw.ai_extracted),
+    review_required: Boolean(raw.review_required),
+    action_status: raw.action_status ?? 'pending',
+    dismissed: Boolean(raw.dismissed),
+    user_modified: Boolean(raw.user_modified),
   };
 }
 
 /** 일정 목록 — 향후 GET /api/events */
-export async function getEvents() {
-  const data = USE_MOCK ? await mockResponse(mockStore.events) : await apiRequest('/api/events');
+export async function getEvents(includeDismissed = false) {
+  const data = USE_MOCK ? await mockResponse(mockStore.events.filter((e) => includeDismissed || !e.dismissed))
+    : await apiRequest(`/api/events?include_dismissed=${includeDismissed}`);
   return data.map(normalizeEvent);
 }
 
@@ -62,4 +68,19 @@ export async function setBookmark(id, bookmarked) {
     return mockResponse({ id, bookmarked });
   }
   return apiRequest(`/api/events/${encodeURIComponent(id)}/bookmark`, { method: 'PUT', body: { bookmarked } });
+}
+
+export async function setActionStatus(id, action_status) {
+  if (USE_MOCK) { updateMockEvent(id, { action_status }); return mockResponse({ id, action_status }); }
+  return apiRequest(`/api/events/${encodeURIComponent(id)}/action-status`, { method: 'PUT', body: { action_status } });
+}
+
+export async function setDismissed(id, dismissed) {
+  if (USE_MOCK) { updateMockEvent(id, { dismissed }); return mockResponse({ id, dismissed }); }
+  return apiRequest(`/api/events/${encodeURIComponent(id)}/dismissed`, { method: 'PUT', body: { dismissed } });
+}
+
+export async function reportEvent(id, reason, memo) {
+  if (USE_MOCK) return mockResponse({ saved: true });
+  return apiRequest(`/api/events/${encodeURIComponent(id)}/reports`, { method: 'POST', body: { reason, memo } });
 }

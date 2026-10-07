@@ -10,6 +10,8 @@ export default function DeadlineItem({ event, onToggleRegister }) {
       </div>
       <div className="dl-info">
         <div className="dl-name">{event.title}</div>
+        {event.ai_extracted && <span>AI 추출 · </span>}
+        <a href={event.source_url || '#'} target="_blank" rel="noreferrer" onClick={(e) => { if (!event.source_url) e.preventDefault(); }}>원문 링크</a>
         <div className="dl-meta">
           <span className="dl-src">{getSource(event.source).label}</span>· {event.end_date}
         </div>

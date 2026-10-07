@@ -44,7 +44,7 @@ function FilterGroup({ options, value, onChange, style }) {
 }
 
 export default function SchedulesPage() {
-  const { events, status, toggleRegister, toggleBookmark, actionBusy } = useAppData();
+  const { events, status, toggleRegister, toggleBookmark, actionBusy, includeDismissed, setIncludeDismissed } = useAppData();
   const [selectedId, setSelectedId] = useState(null);
   const selectedEvent = events.find((event) => event.id === selectedId);
   const [sourceFilter, setSourceFilter] = useState('all');
@@ -68,6 +68,7 @@ export default function SchedulesPage() {
       </div>
 
       <div className="filter-bar">
+        <label><input type="checkbox" checked={includeDismissed} onChange={(e) => setIncludeDismissed(e.target.checked)} /> 관심 없음 포함</label>
         <FilterGroup options={SOURCE_FILTERS} value={sourceFilter} onChange={setSourceFilter} />
         <FilterGroup options={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter} style={{ marginLeft: 4 }} />
         <div className="filter-r">

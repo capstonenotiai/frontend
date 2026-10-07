@@ -3,6 +3,7 @@ import { getSource } from '../config/sources';
 import { URGENCY_PILL_TONE, formatMonthDay, parseDate, formatRange } from '../utils/date';
 import Badge from './Badge';
 import EventReviewStatus from './EventReviewStatus';
+import EventReportForm from './EventReportForm';
 import { getEventDetail } from '../services/eventService';
 import { useAppData } from '../context/AppDataContext';
 import './EventDetailPanel.css';
@@ -11,7 +12,7 @@ const TYPE_LABELS = { application: '접수', submission: '제출', event: '본�
 
 /** 캘린더 하단 상세 패널 (.cal-detail) — 일정 상세 또는 '일정 없음' */
 export default function EventDetailPanel({ event, date, onClose }) {
-  const { calendarEvents, actionBusy, registerInterview, unregisterDetailEvent, toggleRegister } = useAppData();
+  const { calendarEvents, actionBusy, registerInterview, unregisterDetailEvent, requestRegistration, setActionStatus, setDismissed } = useAppData();
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -69,6 +70,9 @@ export default function EventDetailPanel({ event, date, onClose }) {
         <b>일정 안내</b> · {event.detail || '상세 내용은 원문 공지를 확인하세요.'}
       </div>
       <EventReviewStatus event={event} />
+      {event.ai_extracted && <span>AI 추출 · </span>}
+      <a href={event.source_url || '#'} target="_blank" rel="noreferrer" onClick={(e) => { if (!event.source_url) e.preventDefault(); }}>원문 링크</a>
+      {event.notice_id != null && <button type="button" disabled={actionBusy} onClick={() => setDismissed(event.id, !detail?.dismissed)}>{detail?.dismissed ? '관심 없음 되돌리기' : '관심 없음'}</button>}
       <h3>공지 전체 일정</h3>
       <p>캘린더 등록 시 면접과 결과 발표를 제외한 일정을 함께 추가합니다. 면접은 별도로 선택하세요.</p>
       {error && <p role="alert">{error}</p>}
@@ -79,18 +83,26 @@ export default function EventDetailPanel({ event, date, onClose }) {
           <p>{formatRange(item.start_date, item.end_date)} {item.start_time}{item.end_time && ` ~ ${item.end_time}`}{item.location && ` · ${item.location}`}</p>
           {item.detail && <p>{item.detail}</p>}
           <EventReviewStatus event={item} />
+          {item.ai_extracted && <span>AI 추출 · </span>}
+          <a href={item.source_url || '#'} target="_blank" rel="noreferrer" onClick={(e) => { if (!item.source_url) e.preventDefault(); }}>원문 링크</a>
+          <button type="button" disabled={actionBusy} aria-pressed={item.action_status === 'done'}
+            onClick={() => setActionStatus(item.id, item.action_status === 'done' ? 'pending' : 'done')}>
+            {item.action_status === 'done' ? '신청 완료 ✓ · 취소' : '신청 완료 표시'}
+          </button>
+          <EventReportForm eventId={item.id} />
           {item.event_type === 'interview' && <button type="button" className="btn-reg active"
-            disabled={actionBusy || (!item.registered && !item.can_register)} title={item.registration_reason}
+            disabled={actionBusy} title="원문 확인 후 면접을 따로 등록합니다."
             onClick={() => item.registered ? unregisterDetailEvent(item.id) : registerInterview(item.id)}>
             {item.registered ? '면접 등록 해제' : '면접 캘린더에 추가'}
           </button>}
         </li>)}
       </ul>
       {event.event_type !== 'interview' && <button type="button" className="btn-reg active"
-        disabled={actionBusy || (!event.registered && !event.can_register)}
-        onClick={() => event.registered ? unregisterDetailEvent(event.id) : toggleRegister(event.id)}>
+        disabled={actionBusy}
+        onClick={() => event.registered ? unregisterDetailEvent(event.id) : requestRegistration(event.id)}>
         {event.registered ? '공지 일정 등록 해제' : '공지 일정 함께 등록'}
       </button>}
+      {event.registered && <button type="button" disabled={actionBusy} onClick={() => requestRegistration(event.id, event.event_type === 'interview')}>내 일정 확인·수정</button>}
     </div>
   );
 }

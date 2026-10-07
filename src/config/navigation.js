@@ -13,7 +13,6 @@
  *     action 없이 to 도 없으면 아직 기능이 없는 버튼(비활성 표시)
  */
 export const APP_PAGES = [
-  { id: 'admin', path: '/admin/review', label: '일정 검수', icon: 'settings', section: 'settings', adminOnly: true, actions: [] },
   {
     id: 'dashboard',
     path: '/dashboard',
