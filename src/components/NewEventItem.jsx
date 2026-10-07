@@ -11,7 +11,6 @@ export default function NewEventItem({ event, onToggleRegister }) {
       <SourceBadge source={event.source} variant="dashboard" />
       <div className="new-info">
         <div className="new-name">{event.title}</div>
-        {event.ai_extracted && <span>AI 추출 · </span>}
         <a href={event.source_url || '#'} target="_blank" rel="noreferrer" onClick={(e) => { if (!event.source_url) e.preventDefault(); }}>원문 링크</a>
         <div className="new-period">{formatRange(event.start_date, event.end_date)}</div>
         <EventReviewStatus event={event} />

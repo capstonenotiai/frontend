@@ -13,7 +13,7 @@ export default function RegisterButton({ registered, onToggle, variant = 'compac
   if (variant === 'full') {
     return (
       <button type="button" disabled={disabled} title={reason} className={`btn-reg ${registered ? 'done' : 'active'}`} onClick={handleClick}>
-        {registered ? '공지 등록됨' : '공지 일정 등록'}
+        {registered ? '등록됨' : '일정 등록'}
       </button>
     );
   }

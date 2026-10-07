@@ -5,6 +5,7 @@ import * as eventService from '../services/eventService';
 import { enrichEvent } from '../utils/events';
 import { getToday } from '../utils/date';
 import RegisterConfirmDialog from '../components/RegisterConfirmDialog';
+import { registrationTargets, needsConfirmation } from '../utils/registration';
 
 /**
  * 일정 데이터 + 캘린더 등록 상태를 여러 화면(Dashboard / 일정 목록 / 캘린더 / 사이드바)이 공유.
@@ -69,22 +70,36 @@ export function AppDataProvider({ children }) {
     }
   }, [refresh]);
 
+  const processRegistrations = useCallback((requests) => runAction(async () => {
+    for (let index = 0; index < requests.length; index += 1) {
+      const request = requests[index];
+      const detail = await eventService.getEventDetail(request.id);
+      const targets = registrationTargets(detail, request);
+      if (request.editing || needsConfirmation(targets)) {
+        setRegistrationQueue(requests.slice(index));
+        return;
+      }
+      if (request.interview) await calendarService.registerInterview(request.id);
+      else await calendarService.registerEvent(request.id);
+    }
+  }), [runAction]);
+
   const toggleRegister = useCallback(
     (id) => {
       const event = eventsRef.current.find((item) => item.id === id);
       if (!event) return;
       const registered = !event.registered;
-      if (registered) { setRegistrationQueue([{ id, interview: event.event_type === 'interview' }]); return; }
+      if (registered) return processRegistrations([{ id, interview: event.event_type === 'interview' }]);
       return runAction(() => calendarService.unregisterEvent(id));
     },
-    [runAction],
+    [runAction, processRegistrations],
   );
 
   const registerAll = useCallback(() => {
-    // Each notice gets its own confirmation form before the next bundle is registered.
+    // Register ordinary bundles directly; pause only for a bundle that needs confirmation.
     const ids = eventsRef.current.filter((event) => !event.registered && event.event_type !== 'interview').map((event) => event.id);
-    setRegistrationQueue(ids.map((id) => ({ id, interview: false })));
-  }, []);
+    return processRegistrations(ids.map((id) => ({ id, interview: false })));
+  }, [processRegistrations]);
 
   const syncEvent = useCallback(async (id) => {
     setActionError(null);
@@ -102,8 +117,8 @@ export function AppDataProvider({ children }) {
     [runAction],
   );
 
-  const registerInterview = useCallback((id) => setRegistrationQueue([{ id, interview: true }]), []);
-  const requestRegistration = useCallback((id, interview = false) => setRegistrationQueue([{ id, interview }]), []);
+  const registerInterview = useCallback((id) => processRegistrations([{ id, interview: true }]), [processRegistrations]);
+  const requestRegistration = useCallback((id, interview = false, editing = false) => processRegistrations([{ id, interview, editing }]), [processRegistrations]);
   const unregisterDetailEvent = useCallback((id) => runAction(() => calendarService.unregisterEvent(id)), [runAction]);
   const setActionStatus = useCallback((id, status) => runAction(() => eventService.setActionStatus(id, status)), [runAction]);
   const setDismissed = useCallback((id, value) => runAction(() => eventService.setDismissed(id, value)), [runAction]);
@@ -111,11 +126,15 @@ export function AppDataProvider({ children }) {
   const confirmRegistration = useCallback(async (overrides) => {
     const request = registrationQueue[0];
     if (!request) return false;
-    const ok = await runAction(() => request.interview ? calendarService.registerInterview(request.id, overrides)
-      : calendarService.registerEvent(request.id, overrides));
-    if (ok) setRegistrationQueue((prev) => prev.slice(1));
+    const ok = await runAction(() => request.interview ? calendarService.registerInterview(request.id, overrides, true)
+      : calendarService.registerEvent(request.id, overrides, true));
+    if (ok) {
+      const remaining = registrationQueue.slice(1);
+      setRegistrationQueue([]);
+      if (remaining.length) await processRegistrations(remaining);
+    }
     return ok;
-  }, [registrationQueue, runAction]);
+  }, [registrationQueue, runAction, processRegistrations]);
 
   // D-day, 임박도 등 화면용 파생 값
   const enrichedEvents = useMemo(() => {

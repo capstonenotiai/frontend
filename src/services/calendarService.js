@@ -9,12 +9,12 @@ import { normalizeEvent } from './eventService';
  */
 
 /** 향후 POST /api/calendar/register */
-export async function registerEvent(id, overrides = {}) {
+export async function registerEvent(id, overrides = {}, confirmed = false) {
   if (USE_MOCK) {
     updateMockEvent(id, { registered: true });
     return mockResponse({ id, registered: true });
   }
-  return apiRequest('/api/calendar/register', { method: 'POST', body: { event_id: id, overrides, confirmed: true } });
+  return apiRequest('/api/calendar/register', { method: 'POST', body: { event_id: id, overrides, confirmed } });
 }
 
 /** 향후 DELETE /api/calendar/register/:id */
@@ -41,7 +41,7 @@ export async function getRegisteredEvents() {
   return data.map(normalizeEvent);
 }
 
-export async function registerInterview(id, overrides = {}) {
+export async function registerInterview(id, overrides = {}, confirmed = false) {
   if (USE_MOCK) { updateMockEvent(id, { registered: true }); return mockResponse({ id, registered: true }); }
-  return apiRequest(`/api/calendar/interviews/${encodeURIComponent(id)}`, { method: 'POST', body: { overrides, confirmed: true } });
+  return apiRequest(`/api/calendar/interviews/${encodeURIComponent(id)}`, { method: 'POST', body: { overrides, confirmed } });
 }
