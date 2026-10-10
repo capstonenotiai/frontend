@@ -5,6 +5,8 @@ import * as eventService from '../services/eventService';
 import { enrichEvent } from '../utils/events';
 import { getToday } from '../utils/date';
 import RegisterConfirmDialog from '../components/RegisterConfirmDialog';
+import UndoToast from '../components/UndoToast';
+import { useUser } from './UserContext';
 import { registrationTargets, needsConfirmation } from '../utils/registration';
 
 /**
@@ -13,10 +15,13 @@ import { registrationTargets, needsConfirmation } from '../utils/registration';
  */
 const AppDataContext = createContext(null);
 
-export function AppDataProvider({ children }) {
+export function AppDataProvider({ children, enabled = true }) {
+  const { preferences, sourcesVersion } = useUser();
+  const enabledSources = preferences.enabled_sources;
+  const refreshVersion = useRef(0);
   const [events, setEvents] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
-  const [includeDismissed, setIncludeDismissed] = useState(false);
+  const [hiddenEvents, setHiddenEvents] = useState([]);
   const [registrationQueue, setRegistrationQueue] = useState([]);
   const [actionBusy, setActionBusy] = useState(false);
   const actionLock = useRef(false);
@@ -24,31 +29,51 @@ export function AppDataProvider({ children }) {
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [undoToast, setUndoToast] = useState(null);
+  const showUndo = useCallback((message, undo) => setUndoToast({ message, undo }), []);
+  useEffect(() => {
+    if (!undoToast) return;
+    const timer = setTimeout(() => setUndoToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [undoToast]);
   const eventsRef = useRef(events);
   eventsRef.current = events;
 
-  const refresh = useCallback(async () => {
-    setStatus('loading');
+  const loadHidden = useCallback(async (version = refreshVersion.current) => {
+    const items = await eventService.getEvents(true);
+    if (version === refreshVersion.current) setHiddenEvents(items.filter((event) => event.dismissed));
+  }, []);
+
+  const refresh = useCallback(async ({ silent = false } = {}) => {
+    const version = ++refreshVersion.current;
+    if (!silent) setStatus('loading');
     setError(null);
     try {
       const [nextEvents, nextSummary, nextCalendar] = await Promise.all([
-        eventService.getEvents(includeDismissed),
+        eventService.getEvents(false),
         dashboardService.getDashboardSummary(),
         calendarService.getRegisteredEvents(),
+        loadHidden(version),
       ]);
+      if (version !== refreshVersion.current) return false;
       setEvents(nextEvents);
       setSummary(nextSummary);
       setCalendarEvents(nextCalendar);
       setStatus('ready');
+      return true;
     } catch (err) {
+      if (version !== refreshVersion.current) return false;
       setError(err);
       setStatus('error');
+      return false;
     }
-  }, [includeDismissed]);
+  }, [loadHidden]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (enabled) refresh();
+    else ++refreshVersion.current; // 공개 화면으로 나간 뒤 이전 조회 응답을 반영하지 않는다.
+  }, [refresh, enabled]);
+  useEffect(() => { if (enabled && sourcesVersion) refresh({ silent: true }); }, [sourcesVersion, refresh, enabled]);
 
   // Bundle writes can partially succeed in Google. Always reload the server's actual state.
   const runAction = useCallback(async (request) => {
@@ -58,10 +83,9 @@ export function AppDataProvider({ children }) {
     setActionError(null);
     try {
       await request();
-      await refresh();
-      return true;
+      return await refresh({ silent: true });
     } catch (err) {
-      await refresh();
+      await refresh({ silent: true });
       setActionError(err);
       return false;
     } finally {
@@ -70,19 +94,28 @@ export function AppDataProvider({ children }) {
     }
   }, [refresh]);
 
-  const processRegistrations = useCallback((requests) => runAction(async () => {
-    for (let index = 0; index < requests.length; index += 1) {
-      const request = requests[index];
-      const detail = await eventService.getEventDetail(request.id);
-      const targets = registrationTargets(detail, request);
-      if (request.editing || needsConfirmation(targets)) {
-        setRegistrationQueue(requests.slice(index));
-        return;
+  const processRegistrations = useCallback(async (requests) => {
+    let queued = false;
+    const ok = await runAction(async () => {
+      for (let index = 0; index < requests.length; index += 1) {
+        const request = requests[index];
+        const detail = await eventService.getEventDetail(request.id);
+        const targets = registrationTargets(detail, request);
+        if (request.editing || needsConfirmation(targets)) {
+          setRegistrationQueue(requests.slice(index));
+          queued = true;
+          return;
+        }
+        if (request.interview) await calendarService.registerInterview(request.id);
+        else await calendarService.registerEvent(request.id);
       }
-      if (request.interview) await calendarService.registerInterview(request.id);
-      else await calendarService.registerEvent(request.id);
+    });
+    if (ok && !queued) {
+      const message = requests.find((request) => request.successMessage)?.successMessage;
+      if (message) showUndo(message);
     }
-  }), [runAction]);
+    return ok;
+  }, [runAction, showUndo]);
 
   const toggleRegister = useCallback(
     (id) => {
@@ -101,11 +134,7 @@ export function AppDataProvider({ children }) {
     return processRegistrations(ids.map((id) => ({ id, interview: false })));
   }, [processRegistrations]);
 
-  const syncEvent = useCallback(async (id) => {
-    setActionError(null);
-    try { await calendarService.syncEvent(id); await refresh(); }
-    catch (err) { setActionError(err); }
-  }, [refresh]);
+  const syncEvent = useCallback((id) => runAction(() => calendarService.syncEvent(id)), [runAction]);
 
   const toggleBookmark = useCallback(
     (id) => {
@@ -118,10 +147,12 @@ export function AppDataProvider({ children }) {
   );
 
   const registerInterview = useCallback((id) => processRegistrations([{ id, interview: true }]), [processRegistrations]);
-  const requestRegistration = useCallback((id, interview = false, editing = false) => processRegistrations([{ id, interview, editing }]), [processRegistrations]);
+  const requestRegistration = useCallback((id, interview = false, editing = false, successMessage) => processRegistrations([{ id, interview, editing, successMessage }]), [processRegistrations]);
   const unregisterDetailEvent = useCallback((id) => runAction(() => calendarService.unregisterEvent(id)), [runAction]);
   const setActionStatus = useCallback((id, status) => runAction(() => eventService.setActionStatus(id, status)), [runAction]);
   const setDismissed = useCallback((id, value) => runAction(() => eventService.setDismissed(id, value)), [runAction]);
+  const updateOverrides = useCallback((id, overrides) => runAction(() => eventService.updateOverrides(id, overrides)), [runAction]);
+  const saveBookmark = useCallback((id, value) => runAction(() => eventService.setBookmark(id, value)), [runAction]);
 
   const confirmRegistration = useCallback(async (overrides) => {
     const request = registrationQueue[0];
@@ -129,27 +160,33 @@ export function AppDataProvider({ children }) {
     const ok = await runAction(() => request.interview ? calendarService.registerInterview(request.id, overrides, true)
       : calendarService.registerEvent(request.id, overrides, true));
     if (ok) {
+      if (request.successMessage) showUndo(request.successMessage);
       const remaining = registrationQueue.slice(1);
       setRegistrationQueue([]);
       if (remaining.length) await processRegistrations(remaining);
     }
     return ok;
-  }, [registrationQueue, runAction, processRegistrations]);
+  }, [registrationQueue, runAction, processRegistrations, showUndo]);
 
   // D-day, 임박도 등 화면용 파생 값
   const enrichedEvents = useMemo(() => {
     const today = getToday();
-    return events.map((event) => enrichEvent(event, today));
-  }, [events]);
+    return events.filter(event => enabledSources[event.source] !== false).map((event) => enrichEvent(event, today));
+  }, [events, enabledSources]);
   const enrichedCalendar = useMemo(() => calendarEvents.map((event) => enrichEvent(event, getToday())), [calendarEvents]);
+  const enrichedHidden = useMemo(() => hiddenEvents.filter(event => enabledSources[event.source] !== false).map((event) => enrichEvent(event, getToday())), [hiddenEvents, enabledSources]);
 
+  const clearActionError = useCallback(() => setActionError(null), []);
   const value = useMemo(
     () => ({
       events: enrichedEvents,
       calendarEvents: enrichedCalendar,
+      hiddenEvents: enrichedHidden,
+      loadHidden,
       actionBusy,
-      includeDismissed,
-      setIncludeDismissed,
+      showUndo,
+      updateOverrides,
+      saveBookmark,
       setActionStatus,
       setDismissed,
       requestRegistration,
@@ -159,16 +196,22 @@ export function AppDataProvider({ children }) {
       status,
       error,
       actionError,
+      clearActionError,
       refresh,
       toggleRegister,
       toggleBookmark,
       registerAll,
       syncEvent,
     }),
-    [enrichedEvents, enrichedCalendar, actionBusy, includeDismissed, setActionStatus, setDismissed, requestRegistration, registerInterview, unregisterDetailEvent, summary, status, error, actionError, refresh, toggleRegister, toggleBookmark, registerAll, syncEvent],
+    [enrichedEvents, enrichedCalendar, enrichedHidden, loadHidden, actionBusy, showUndo, updateOverrides, saveBookmark, setActionStatus, setDismissed, requestRegistration, registerInterview, unregisterDetailEvent, summary, status, error, actionError, clearActionError, refresh, toggleRegister, toggleBookmark, registerAll, syncEvent],
   );
 
   return <AppDataContext.Provider value={value}>{children}
+    <UndoToast toast={undoToast} busy={actionBusy} onUndo={async () => {
+      const current = undoToast;
+      if (!current?.undo) return;
+      if (await current.undo()) setUndoToast((latest) => latest === current ? null : latest);
+    }} />
     {registrationQueue[0] && <RegisterConfirmDialog request={registrationQueue[0]} busy={actionBusy}
       onCancel={() => setRegistrationQueue([])} onConfirm={confirmRegistration} />}
   </AppDataContext.Provider>;

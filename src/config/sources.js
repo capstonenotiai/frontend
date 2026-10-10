@@ -9,9 +9,9 @@
  * - color     : 수집 현황 막대 색상
  */
 export const SOURCES = [
-  { id: 'cbnu', label: 'CBNU 포털', shortLabel: 'CBNU', cssKey: 'cbnu', type: '학교 공지', color: 'var(--blue)' },
-  { id: 'wevity', label: 'Wevity', shortLabel: 'Wevity', cssKey: 'wevity', type: '공모전', color: '#7C3AED' },
-  { id: 'contestkorea', label: 'ContestKorea', shortLabel: 'ContestKorea', cssKey: 'contest', type: '공모전', color: 'var(--teal)' },
+  { id: 'cbnu', label: '충북대 포털', shortLabel: 'CBNU', cssKey: 'cbnu', type: '학교 공지', color: 'var(--blue)' },
+  { id: 'wevity', label: '위비티', shortLabel: 'Wevity', cssKey: 'wevity', type: '공모전', color: '#7C3AED' },
+  { id: 'contestkorea', label: '콘테스트코리아', shortLabel: 'ContestKorea', cssKey: 'contest', type: '공모전', color: 'var(--teal)' },
 ];
 
 const FALLBACK_SOURCE = { id: 'unknown', label: '기타', shortLabel: '기타', cssKey: 'cbnu', type: '기타', color: 'var(--t3)' };

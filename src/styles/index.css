@@ -1,3 +1,5 @@
+@import './tokens.css';
+@import './policy.css';
 /* 전역 스타일 진입점 — 원본 HTML 의 <style> 을 영역별로 분리 */
 @import './base.css';
 @import './landing.css';
@@ -6,5 +8,6 @@
 @import './schedules.css';
 @import './planner.css';
 @import './calendar.css';
-@import './curation.css';
 @import './settings.css';
+@import './feedback.css';
+@import './welcome.css';

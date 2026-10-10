@@ -10,12 +10,16 @@
  *  - ai_mode   : config/aiModes.js 의 id
  */
 export const mockProfile = {
+  onboarding_done: false,
+  major: '',
+  grade: null,
+  enrollment_status: 'unknown',
   name: '김학생',
   email: 'student@cbnu.ac.kr',
 };
 
 export const mockPreferences = {
-  ai_mode: 'study',
+  ai_mode: 'priority',
   interests: [],
   enabled_sources: {
     cbnu: true,
@@ -23,9 +27,9 @@ export const mockPreferences = {
     contestkorea: true,
   },
   notifications: {
-    d7: true,
     d3: true,
-    new_event: false,
+    d1: true,
+    email: true,
   },
   auto_mode_recommend: true,
 };

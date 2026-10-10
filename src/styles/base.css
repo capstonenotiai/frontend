@@ -1,39 +1,43 @@
-/* 디자인 토큰 + 기본 스타일 — reference/NotiAI_web_final.html 에서 그대로 이전 */
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+/* 기존 페이지 토큰을 새 디자인 토큰으로 연결한다. */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-
 :root {
-  --bg:    #FAFAFA;
-  --bg2:   #FFFFFF;
-  --bg3:   #F4F4F5;
-  --bg4:   #E4E4E7;
-  --bgdk:  #09090B;
-  --line:  rgba(0,0,0,0.07);
-  --line2: rgba(0,0,0,0.11);
-  --line3: rgba(0,0,0,0.17);
-  --text:  #09090B;
-  --t2:    #52525B;
-  --t3:    #A1A1AA;
-  --t4:    #D4D4D8;
-  --blue:  #2563EB;
-  --blue2: #1D4ED8;
-  --teal:  #0D9488;
-  --red:   #DC2626;
+  --bg: var(--color-canvas);
+  --bg2: var(--color-paper);
+  --bg3: var(--color-paper-2);
+  --bg4: var(--color-paper-3);
+  --bgdk: var(--color-ink);
+  --line: var(--color-rule);
+  --line2: var(--color-rule);
+  --line3: var(--color-control);
+  --text: var(--color-ink);
+  --t2: var(--color-ink-2);
+  --t3: var(--color-muted);
+  --t4: var(--color-control);
+  --blue: var(--color-accent);
+  --blue2: var(--color-accent-strong);
+  --red: var(--color-danger);
+  /* 화면별 지시서에서 제거 예정 */
+  --teal: #0D9488;
   --amber: #D97706;
   --green: #16A34A;
-  --ind:   #6366F1;
-  --sans:  'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', 'Apple SD Gothic Neo', Roboto, sans-serif;
-  --mono:  'Geist Mono', ui-monospace, 'SF Mono', 'Roboto Mono', monospace;
-  --sw:    220px;
+  --ind: #6366F1;
+  --sans: var(--font-body);
+  --mono: var(--font-body);
+  --sw: 220px;
 }
-
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.65;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: clip;
+}
+:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }

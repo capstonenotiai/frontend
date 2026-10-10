@@ -21,7 +21,12 @@ export function useCalendarMonth() {
     (target) => {
       const today = getToday();
       const isThisMonth = target.year === today.getFullYear() && target.month === today.getMonth();
-      setSearchParams(isThisMonth ? {} : { month: toMonthKey(target.year, target.month) });
+      setSearchParams((currentParams) => {
+        const next = new URLSearchParams(currentParams);
+        if (isThisMonth) next.delete('month');
+        else next.set('month', toMonthKey(target.year, target.month));
+        return next;
+      });
     },
     [setSearchParams],
   );
@@ -30,6 +35,6 @@ export function useCalendarMonth() {
     ...current,
     goPrev: () => goToMonth(shiftMonth(current, -1)),
     goNext: () => goToMonth(shiftMonth(current, 1)),
-    goToday: () => setSearchParams({}),
+    goToday: () => goToMonth({ year: getToday().getFullYear(), month: getToday().getMonth() }),
   };
 }

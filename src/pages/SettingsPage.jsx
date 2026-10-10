@@ -1,102 +1,57 @@
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Badge from '../components/Badge';
-import Card from '../components/Card';
+import { useCallback, useRef } from 'react';
 import InterestSelector from '../components/InterestSelector';
 import SettingsRow from '../components/SettingsRow';
 import Toggle from '../components/Toggle';
-import { FEATURE_FLAGS } from '../config/app';
+import LoadError from '../components/LoadError';
+import { ProfileFields, NotificationFields, SaveIndicator, SettingsLoading } from '../components/SettingsFields';
 import { SOURCES } from '../config/sources';
 import { useUser } from '../context/UserContext';
+import { canToggleSource } from '../utils/settings';
+import { logout, deleteAccount } from '../services/userService';
+import DeleteAccountDialog from '../components/DeleteAccountDialog';
 
-/** 알림 설정 항목 — preferences.notifications 의 key 와 매핑 */
-const NOTIFICATION_OPTIONS = [
-  { key: 'd7', name: 'D-7 알림', sub: '마감 7일 전 알림' },
-  { key: 'd3', name: 'D-3 긴급 알림', sub: '마감 3일 전 긴급 알림' },
-  { key: 'new_event', name: '새 일정 알림', sub: '새로 수집된 일정 즉시 알림' },
-];
-
+function Section({ title, description, children }) {
+  return <section className="settings-section"><h2>{title}</h2>{description && <p className="settings-description">{description}</p>}{children}</section>;
+}
 export default function SettingsPage() {
+  const { profile, preferences, status, reloadUser, saveStates = {}, updateProfile, toggleInterest, setSource, setNotification, retrySave, resetAccount } = useUser();
   const navigate = useNavigate();
-  const { profile, preferences, activeMode, updatePreferences, toggleInterest } = useUser();
-
-  const setNested = (group, key, value) =>
-    updatePreferences((current) => ({ ...current, [group]: { ...current[group], [key]: value } }));
-
-  const enabledSourceCount = SOURCES.filter((source) => preferences.enabled_sources[source.id]).length;
-
-  return (
-    <>
-      <div className="page-header">
-        <div className="page-title">설정</div>
-        <div className="page-sub">계정 및 알림 설정을 관리하세요</div>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 680 }}>
-        <Card title="계정 정보" bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div className="sb-avatar" style={{ width: 44, height: 44, fontSize: 16 }}>
-              {profile.name.slice(0, 1)}
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{profile.name}</div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--t3)' }}>{profile.email}</div>
-            </div>
-            {/* TODO: Google OAuth 연동 후 구현 */}
-            <button type="button" className="btn-sm ghost" style={{ marginLeft: 'auto' }} title="준비 중인 기능입니다">
-              Google 재연결
-            </button>
-          </div>
-        </Card>
-
-        <Card
-          title="연동 사이트"
-          headerRight={<Badge tone="blue">{enabledSourceCount}개 활성</Badge>}
-          bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-        >
-          {SOURCES.map((source) => (
-            <SettingsRow key={source.id} name={source.label} sub={`${source.type} · 매일 09:00 수집`}>
-              <Toggle
-                label={`${source.label} 수집`}
-                checked={!!preferences.enabled_sources[source.id]}
-                onChange={(value) => setNested('enabled_sources', source.id, value)}
-              />
-            </SettingsRow>
-          ))}
-        </Card>
-
-        <Card title="알림 설정" bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {NOTIFICATION_OPTIONS.map((option) => (
-            <SettingsRow key={option.key} name={option.name} sub={option.sub}>
-              <Toggle
-                label={option.name}
-                checked={!!preferences.notifications[option.key]}
-                onChange={(value) => setNested('notifications', option.key, value)}
-              />
-            </SettingsRow>
-          ))}
-        </Card>
-
-        {FEATURE_FLAGS.interestSettings && (
-          <Card title="관심 분야" headerRight={<Badge tone="blue">{preferences.interests.length}개 선택</Badge>}>
-            <InterestSelector selected={preferences.interests} onToggle={toggleInterest} />
-          </Card>
-        )}
-
-        <Card title="AI 플래너 설정" bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <SettingsRow name="기본 모드" sub={`현재: ${activeMode.name}`}>
-            <button type="button" className="btn-sm ghost" style={{ fontSize: 12 }} onClick={() => navigate('/planner')}>
-              변경
-            </button>
-          </SettingsRow>
-          <SettingsRow name="자동 모드 추천" sub="AI가 상황에 따라 모드를 추천">
-            <Toggle
-              label="자동 모드 추천"
-              checked={preferences.auto_mode_recommend}
-              onChange={(value) => updatePreferences({ auto_mode_recommend: value })}
-            />
-          </SettingsRow>
-        </Card>
-      </div>
-    </>
-  );
+  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteTrigger = useRef(null);
+  const closeDelete = useCallback(() => setDeleteOpen(false), []);
+  if (status === 'loading') return <SettingsLoading />;
+  if (status === 'error') return <LoadError message="설정을 불러오지 못했어요." onRetry={reloadUser} />;
+  return <div className="settings-card">
+    <Section title="프로필" description="추천과 지원 조건 확인에 써요."><ProfileFields profile={profile} onChange={updateProfile} states={saveStates} onRetry={retrySave} /></Section>
+    <Section title="관심분야" description="고른 분야의 새 공지를 먼저 보여 주고, AI 플래너가 참고해요.">
+      <InterestSelector selected={preferences.interests} onToggle={toggleInterest} state={saveStates['preferences.interests']} />
+      <SaveIndicator field="preferences.interests" states={saveStates} onRetry={retrySave} />
+    </Section>
+    <Section title="공지 출처" description="끄면 그 사이트 공지를 목록과 알림에서 빼요.">
+      {SOURCES.map(source => {
+        const checked = preferences.enabled_sources[source.id] !== false;
+        const blocked = checked && !canToggleSource(preferences.enabled_sources, source.id, false);
+        const field = `preferences.enabled_sources.${source.id}`;
+        return <SettingsRow key={source.id} name={source.label} sub={blocked ? <span id={`source-help-${source.id}`}>하나 이상 켜 두어야 해요</span> : null}>
+          <SaveIndicator field={field} states={saveStates} onRetry={retrySave} />
+          <Toggle checked={checked} onChange={value => setSource(source.id, value)} label={source.label} disabled={blocked} state={saveStates[field]} describedBy={blocked ? `source-help-${source.id}` : undefined} />
+        </SettingsRow>;
+      })}
+    </Section>
+    <Section title="알림" description="등록하거나 관심 저장한 일정의 마감 전에 알려 드려요.">
+      <NotificationFields notifications={preferences.notifications} email={profile.email} onChange={setNotification} states={saveStates} onRetry={retrySave} />
+    </Section>
+    <Section title="계정">
+      <div className="settings-account"><span className="settings-avatar" aria-hidden="true">{profile.name.slice(0, 1)}</span><div><p className="settings-account-label">Google 계정</p><strong>{profile.name}</strong><p className="settings-description">{profile.email}</p></div>
+        <button className="settings-button" type="button" disabled={busy} onClick={async () => { if (busy) return; setBusy(true); setError(''); try { await logout(); navigate('/', { replace: true }); } catch { setError('로그아웃하지 못했어요. 다시 시도해 주세요.'); } finally { setBusy(false); } }}>{busy ? '로그아웃 중…' : '로그아웃'}</button>
+      </div>{error && <p className="settings-error" role="alert">{error}</p>}
+      <div className="settings-delete-row"><button ref={deleteTrigger} type="button" className="settings-button quiet danger-text" disabled={busy} onClick={() => setDeleteOpen(true)}>계정 삭제</button></div>
+    </Section>
+    {deleteOpen && <DeleteAccountDialog triggerRef={deleteTrigger} onCancel={closeDelete} onDelete={async () => {
+      await deleteAccount(); resetAccount(); navigate('/', { replace: true });
+    }} />}
+  </div>;
 }

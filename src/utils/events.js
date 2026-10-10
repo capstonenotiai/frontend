@@ -1,9 +1,10 @@
+export { countSaved, countHidden } from './foundation.js';
 import { getSource } from '../config/sources';
 import { daysUntil, formatDday, getToday, getUrgency } from './date';
 
 /** 화면 표시용 파생 값(D-day, 임박도, 출처 정보)을 붙인다. 원본 데이터는 바꾸지 않음 */
 export function enrichEvent(event, today = getToday()) {
-  const daysLeft = daysUntil(event.end_date, today);
+  const daysLeft = daysUntil(event.end_date || event.start_date, today);
   return {
     ...event,
     daysLeft,
@@ -15,8 +16,8 @@ export function enrichEvent(event, today = getToday()) {
 
 /** 마감일 오름차순 (마감일 없는 일정은 뒤로) */
 export function compareByDeadline(a, b) {
-  const aKey = a.end_date || '9999-12-31';
-  const bKey = b.end_date || '9999-12-31';
+  const aKey = a.end_date || a.start_date || '9999-12-31';
+  const bKey = b.end_date || b.start_date || '9999-12-31';
   return aKey.localeCompare(bKey);
 }
 

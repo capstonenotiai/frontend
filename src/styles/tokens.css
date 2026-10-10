@@ -1,0 +1,57 @@
+:root {
+  --color-canvas: #F4F6FB;
+  --color-paper: #FFFFFF;
+  --color-paper-2: #F3F5FA;
+  --color-paper-3: #E6EAF2;
+  --color-ink: #171C26;
+  --color-ink-2: #545D6E;
+  --color-muted: #687080;
+  --color-rule: #E9ECF2;
+  --color-control: #C3CAD6;
+  --color-accent: #3B5BDB;
+  --color-accent-strong: #2F4AC0;
+  --color-accent-soft: #EDF1FF;
+  --color-on-accent: #FFFFFF;
+  --color-danger: #C92A2A;
+  --color-new: #FFE36E;
+  --color-check-bg: #FFF2CC;
+  --color-check-fg: #7A5000;
+  --color-star: #E0A100;
+  --color-focus: #3B5BDB;
+
+  --cat-scholarship: #19A974; --cat-scholarship-bg: #E3F6EE; --cat-scholarship-fg: #0B6E49;
+  --cat-academic:    #3D7BF7; --cat-academic-bg:    #E6EFFE; --cat-academic-fg:    #1C4FC4;
+  --cat-career:      #8B5CF6; --cat-career-bg:      #F0EAFE; --cat-career-fg:      #5B33C6;
+  --cat-contest:     #F2994A; --cat-contest-bg:     #FDF0E4; --cat-contest-fg:     #9A4A0C;
+  --cat-activity:    #E5579B; --cat-activity-bg:    #FCE8F2; --cat-activity-fg:    #A3245F;
+
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --text-xs: 12px; --text-sm: 13px; --text-base: 14px; --text-md: 15px;
+  --text-lg: 16px; --text-xl: 18px; --text-2xl: 20px; --text-3xl: 24px;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(23, 28, 38, .04), 0 4px 16px rgba(23, 28, 38, .04);
+  --shadow-pop: 0 12px 36px rgba(23, 28, 38, .16), 0 0 0 1px rgba(23, 28, 38, .06);
+  --shadow-fab: 0 8px 20px rgba(59, 91, 219, .35);
+  --scrim: rgba(23, 28, 38, .92);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-short: 150ms;
+}
+
+/* design.md Per-page allowances의 랜딩 허용 토큰 */
+:root {
+  --shadow-lift: 0 2px 4px rgba(23, 28, 38, .04), 0 18px 40px rgba(23, 28, 38, .10);
+  --shadow-float: 0 1px 2px rgba(23, 28, 38, .05), 0 12px 32px rgba(23, 28, 38, .12);
+  --shadow-accent: 0 10px 24px rgba(59, 91, 219, .30);
+  --shadow-nav: 0 1px 0 rgba(23, 28, 38, .06), 0 8px 24px rgba(23, 28, 38, .06);
+  --google-blue: #4285F4; --google-red: #EA4335; --google-yellow: #FBBC05; --google-green: #34A853;
+  --color-band: #1B2440; --color-band-ink: #FFFFFF; --color-band-sub: #C9D1E6;
+  --live-ring: rgba(52, 168, 83, .45); --live-ring-0: rgba(52, 168, 83, 0);
+  --dur-med: 320ms; --dur-long: 700ms;
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
