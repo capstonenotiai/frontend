@@ -2,7 +2,7 @@
 import { DEFAULT_AI_MODE_ID, getAiMode } from '../config/aiModes';
 import * as userService from '../services/userService';
 import { emptyAccountState, clearAccountStorage } from '../utils/account';
-import { buildPreferencesBody, buildProfileBody, canToggleSource, createSaveQueue } from '../utils/settings';
+import { buildPreferencesBody, buildProfileBody, canToggleSource, createSaveQueue, canToggleInterest } from '../utils/settings';
 
 const UserContext = createContext(null);
 const EMPTY_PROFILE = { name: '', email: '', major: '', grade: null, enrollment_status: 'unknown' };
@@ -82,7 +82,7 @@ export function UserProvider({ children }) {
     preferencesRef.current = next; setPreferences(next);
     return save('preferences', buildPreferencesBody(next), `preferences.${field}`);
   }, [save]);
-  const toggleInterest = useCallback(id => updatePreferences(current => ({ ...current, interests: current.interests.includes(id) ? current.interests.filter(value => value !== id) : [...current.interests, id] }), 'interests'), [updatePreferences]);
+  const toggleInterest = useCallback(id => !canToggleInterest(preferencesRef.current.interests, id) ? Promise.resolve(false) : updatePreferences(current => ({ ...current, interests: current.interests.includes(id) ? current.interests.filter(value => value !== id) : [...current.interests, id] }), 'interests'), [updatePreferences]);
   const setSource = useCallback((id, value) => {
     if (!canToggleSource(preferencesRef.current.enabled_sources, id, value)) return Promise.resolve(false);
     return updatePreferences(current => ({ ...current, enabled_sources: { ...current.enabled_sources, [id]: value } }), `enabled_sources.${id}`);

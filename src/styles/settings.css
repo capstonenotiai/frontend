@@ -72,3 +72,5 @@
 .settings-button.danger, .settings-button.danger:hover:not(:disabled) { background: var(--color-danger); color: var(--color-on-accent); }
 .settings-button.danger:disabled { background: var(--color-paper-3); color: var(--color-muted); }
 .account-delete-dialog :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+.interest-help { min-height: 1lh; margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-ink-2); }

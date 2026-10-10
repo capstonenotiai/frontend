@@ -129,7 +129,9 @@ test('온보딩 화면: 시작하기와 마지막 나중에 하기 모두 완료
     for (const skip of [false, true]) {
       slots = []; render();
       for (let step = 0; step < 3; step++) {
-        const tree = render(); const button = buttons(tree).find(entry => entry.props.className === (skip ? 'settings-button quiet' : 'settings-button primary'));
+        const tree = render(); const all = buttons(tree);
+        if (step === 1) assert.ok(!all.some(entry => entry.props.className === 'settings-button quiet')); // 관심분야 단계에는 나중에 하기가 없다
+        const button = all.find(entry => entry.props.className === (skip && step !== 1 ? 'settings-button quiet' : 'settings-button primary'));
         assert.ok(button); await button.props.onClick();
         assert.equal(requests.length, skip ? (step === 2 ? 2 : 1) : (step === 2 ? 1 : 0));
       }

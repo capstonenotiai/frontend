@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { hasInterest } from '../utils/settings';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { ProfileFields, NotificationFields } from '../components/SettingsFields';
@@ -38,7 +39,7 @@ export default function WelcomePage() {
       {step === 1 && <InterestSelector selected={draft.interests} disabled={busy} onToggle={id => change({ interests: draft.interests.includes(id) ? draft.interests.filter(value => value !== id) : [...draft.interests, id] })} />}
       {step === 2 && <NotificationFields notifications={draft.notifications} email={profile.email} disabled={busy} onChange={(id, value) => change({ notifications: { ...draftRef.current.notifications, [id]: value } })} />}
       {error && <p className="settings-error" role="alert">{error}</p>}
-      <footer className="welcome-actions"><button type="button" className="settings-button quiet" disabled={busy} onClick={skip}>나중에 하기</button><button type="button" className="settings-button primary" disabled={busy} onClick={async () => {
+      <footer className="welcome-actions">{/* 관심분야 단계는 건너뛰지 않는다(사용자 결정) */}{step === 1 ? <span /> : <button type="button" className="settings-button quiet" disabled={busy} onClick={skip}>나중에 하기</button>}<button type="button" className="settings-button primary" disabled={busy || (step === 1 && !hasInterest(draft.interests))} aria-describedby={step === 1 ? 'interest-help' : undefined} onClick={async () => {
         if (lock.current) return; lock.current = true; setBusy(true); setError('');
         try {
           const current = draftRef.current;

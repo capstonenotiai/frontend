@@ -64,3 +64,13 @@ test('저장 큐: 느린 첫 요청 뒤 변경 순서·마지막 값 유지, 실
   await assert.rejects(queue(async () => { throw Error('failed'); }));
   await queue(async () => { stored = 4; }); assert.equal(stored, 4);
 });
+
+test('관심분야 최소 1개: 마지막 하나는 끌 수 없고 0개면 다음으로 못 감', async () => {
+  const { canToggleInterest, hasInterest } = await import('../src/utils/settings.js');
+  assert.equal(canToggleInterest(['academic'], 'academic'), false);
+  assert.equal(canToggleInterest(['academic', 'contest'], 'academic'), true);
+  assert.equal(canToggleInterest([], 'academic'), true);
+  assert.equal(canToggleInterest(['academic'], 'contest'), true);
+  assert.equal(hasInterest([]), false);
+  assert.equal(hasInterest(['career']), true);
+});

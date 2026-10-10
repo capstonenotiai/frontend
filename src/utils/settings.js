@@ -23,6 +23,12 @@ export function canToggleSource(sources, id, value) {
   return SOURCE_IDS.includes(id) && (value || SOURCE_IDS.some(other => other !== id && sources[other] !== false));
 }
 
+/** 관심분야는 최소 1개(사용자 결정 2026-10-11). 이미 0개인 사용자는 켜는 것만 막지 않는다. */
+export function canToggleInterest(interests, id) {
+  return !(interests.length === 1 && interests[0] === id);
+}
+export function hasInterest(interests) { return Array.isArray(interests) && interests.length > 0; }
+
 export function welcomeKey(email) { return `notiai.welcome.done.${email}`; }
 export function shouldShowWelcome(profile, preferences, storage) {
   if (typeof profile?.onboarding_done === 'boolean') return profile.onboarding_done === false;
