@@ -1,0 +1,18 @@
+.admin-review { padding: 24px; color: var(--text); }
+.admin-review h1, .admin-review h2, .admin-review p { margin-bottom: 16px; }
+.admin-columns { display: grid; grid-template-columns: minmax(220px, 28%) minmax(0, 1fr); gap: 24px; }
+.admin-review button, .admin-review input, .admin-review select, .admin-review textarea { padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg2); color: var(--text); font: inherit; }
+.admin-review button { cursor: pointer; }
+.admin-review button:disabled { opacity: .5; cursor: default; }
+.admin-queue > button { display: block; width: 100%; margin: 8px 0; text-align: left; }
+.admin-queue button[aria-pressed=true] { border-color: var(--blue); }
+.admin-queue small { display: block; color: var(--t2); margin-top: 6px; }
+.admin-review pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 400px; overflow: auto; padding: 16px; background: var(--bg); font-size: 13px; }
+.admin-review details, .admin-review fieldset { margin: 16px 0; }
+.admin-review fieldset { padding: 16px; border: 1px solid var(--line); }
+.admin-review label { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.admin-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.admin-event { border-bottom: 1px solid var(--line); padding: 16px 0; margin-bottom: 16px; }
+.admin-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.admin-error { color: var(--red); }
+@media (max-width: 800px) { .admin-columns, .admin-fields { grid-template-columns: 1fr; } }

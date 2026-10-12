@@ -1,3 +1,4 @@
+export { formatKoreanToday } from './foundation.js';
 import { MOCK_TODAY, USE_MOCK, URGENCY_DAYS } from '../config/app';
 
 const DAY_MS = 24 * 60 * 60 * 1000;

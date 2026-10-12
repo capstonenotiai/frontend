@@ -65,7 +65,7 @@ export function buildEventSegments(events, year, month) {
 
       const includesEnd = endsInMonth && segEnd === hi;
       let text = label;
-      if (includesEnd) text = `${label} 마감`;
+      if (includesEnd) text = `${label} ${['application', 'submission'].includes(event.event_type) ? '마감' : '일정'}`;
       else if (startsInMonth && segStart === lo) text = `${label} 시작`;
 
       segments.push({

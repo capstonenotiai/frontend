@@ -66,3 +66,22 @@ export const mockActionSuggestions = [
   { id: 'a2', tone: 'amber', text: '광고대상 작품 파일을 최종 점검하세요' },
   { id: 'a3', tone: 'blue', text: '미등록 일정 3건을 캘린더에 등록하세요' },
 ];
+
+import { daysUntil } from '../utils/date';
+
+/** 앱 일정 ID를 참조하는 모드별 API 응답 fixture. */
+export function buildMockRecommendations(mode, events, now = new Date()) {
+  const common = events.slice(0, 6).map((event, index) => ({
+    opportunity_id: `o${index + 1}`, focus_event_id: event.id, title: event.title,
+    source_url: event.source_url, start_date: event.start_date, end_date: event.end_date,
+    days_until_deadline: daysUntil(event.end_date || event.start_date), fact_refs: [],
+    reason: '확인된 일정과 참여 조건을 바탕으로 검토했어요.',
+  }));
+  const items = common.map((item, index) => mode === 'priority'
+    ? { ...item, next_step_label: ['act', 'act', 'prepare', 'monitor', 'verify', 'prepare'][index], next_action: '공지에서 신청 방법과 준비물을 확인해 주세요.' }
+    : mode === 'discover'
+      ? { ...item, grade: ['strong_match', 'potential_match', 'strong_match', 'not_recommended', 'potential_match', 'not_recommended'][index], check_reasons: ['학년과 팀 참가 조건을 확인해 주세요.'] }
+      : { ...item, tier: index < 3 ? 'core' : 'secondary', secondary_reason: index < 3 ? null : ['stronger_alternative', 'schedule_conflict', 'information_uncertain'][index - 3], chosen_over: [], conflicts_with: [] });
+  return { mode, generated_at: now.toISOString(), items,
+    needs_grouping_check: common.slice(0, 1).map(({ opportunity_id, title }) => ({ opportunity_id, title })), corrections: [] };
+}

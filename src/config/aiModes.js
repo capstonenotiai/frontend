@@ -1,45 +1,8 @@
-/**
- * AI 플래너 판단 방식(HOW) 모드 목록.
- *
- * ⚠️ Study / Explorer / Balanced 는 "임시" 모드입니다. (팀에서 재설계 중)
- *    최종 모드가 확정되면 이 배열만 수정하면 Landing / Dashboard / Planner / Settings 에 모두 반영됩니다.
- *    UI 코드에서는 특정 모드 id 를 하드코딩하지 마세요.
- *
- * 필드
- *  - id               : 백엔드와 주고받을 모드 식별자 (user.ai_mode 에 저장되는 값)
- *  - name             : 화면 표시 이름
- *  - shortDescription : Landing 페이지 모드 카드 설명
- *  - description      : AI 플래너 모드 카드 설명
- *  - dashboardHint    : Dashboard AI 미리보기 카드에 붙는 한 줄 안내
- */
+﻿/** 백엔드 추천 모드. 플래너 선택은 사용자 기본 설정과 독립적이다. */
 export const AI_MODES = [
-  {
-    id: 'study',
-    name: 'Study Mode',
-    shortDescription: '학교 공지 위주 필터링',
-    description: '학교 공지·학사 일정 중심',
-    dashboardHint: '학교 공지를 우선으로 AI가 처리 순서를 추천해 드립니다.',
-  },
-  {
-    id: 'explorer',
-    name: 'Explorer Mode',
-    shortDescription: '공모전·대외활동 탐색',
-    description: 'Wevity·ContestKorea 공모전·대외활동 탐색',
-    dashboardHint: '공모전·대외활동을 우선으로 AI가 처리 순서를 추천해 드립니다.',
-  },
-  {
-    id: 'balanced',
-    name: 'Balanced Mode',
-    shortDescription: '전체 일정 균형 관리',
-    description: '전체 일정 균형 분석',
-    dashboardHint: '전체 일정을 균형 있게 고려해 AI가 처리 순서를 추천해 드립니다.',
-  },
+  { id: 'priority', name: '먼저 할 일', question: '지금 무엇부터 처리할까?', criteria: ['마감이 급한 일정', '공지에 필수로 적힌 일정', '지금 신청할 수 있는 일정'], labels: ['지금 진행', '미리 준비', '확인 필요', '추후 확인'], shortDescription: '지금 처리할 일정 정리', description: '내 일정의 다음 행동을 정리해요.', dashboardHint: '지금 처리할 일을 추천해 드려요.' },
+  { id: 'discover', name: '새 기회', question: '나에게 맞는 새 기회는?', criteria: ['관심분야와 맞거나 관련된 기회', '전공, 학년, 재학 조건이 맞는 공지'], labels: ['적극 추천', '검토 추천', '추천 안 함'], shortDescription: '나에게 맞는 기회 탐색', description: '프로필과 관심분야에 맞는 기회를 찾아요.', dashboardHint: '나에게 맞는 새 기회를 추천해 드려요.' },
+  { id: 'focus', name: '집중할 것', question: '무엇에 집중하고 무엇을 미룰까?', criteria: ['비슷한 활동끼리 비교', '날짜가 겹치는 일정끼리 비교'], labels: ['핵심', '후순위'], shortDescription: '집중할 일정 비교', description: '비슷하거나 겹치는 일정의 우선순위를 정해요.', dashboardHint: '먼저 집중할 일정을 추천해 드려요.' },
 ];
-
-/** 사용자 설정이 없을 때 사용할 기본 모드 */
-export const DEFAULT_AI_MODE_ID = AI_MODES[0].id;
-
-/** id 로 모드를 찾는다. 없는 id(예: 모드 목록이 바뀐 뒤 저장된 옛 값)면 기본 모드를 돌려준다. */
-export function getAiMode(id) {
-  return AI_MODES.find((mode) => mode.id === id) ?? AI_MODES.find((mode) => mode.id === DEFAULT_AI_MODE_ID);
-}
+export const DEFAULT_AI_MODE_ID = 'priority';
+export function getAiMode(id) { return AI_MODES.find((mode) => mode.id === id) ?? AI_MODES[0]; }

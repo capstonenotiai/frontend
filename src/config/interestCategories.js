@@ -7,9 +7,9 @@
  * - boards  : 참고용. model repo crawler/cbnu.py 의 EXTRA_BOARDS 키와 매핑 가능한 게시판
  */
 export const INTEREST_CATEGORIES = [
-  { id: 'scholarship', label: '장학/지원', boards: ['scholarship'] },
-  { id: 'academic', label: '학사/교육', boards: ['sw_notice'] },
-  { id: 'career', label: '취업/인턴', boards: ['employment'] },
+  { id: 'scholarship', label: '장학', boards: ['scholarship'] },
+  { id: 'academic', label: '학사', boards: ['sw_notice'] },
+  { id: 'career', label: '진로·취업', boards: ['employment'] },
   { id: 'contest', label: '공모전', boards: [] },
   { id: 'activity', label: '대외활동', boards: [] },
 ];

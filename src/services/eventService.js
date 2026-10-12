@@ -1,6 +1,7 @@
 import { USE_MOCK } from '../config/app';
 import { apiRequest, mockResponse } from './apiClient';
-import { mockStore, updateMockEvent } from './mockStore';
+import { mockStore, updateMockEvent, mockSiblings, applyMockOverrides } from './mockStore';
+import { buildReportBody } from '../utils/settings';
 
 /**
  * 서버(또는 model repo 파이프라인) 응답 → 프론트 Event 형태로 정규화.
@@ -23,20 +24,69 @@ export function normalizeEvent(raw) {
     bookmarked: Boolean(raw.bookmarked),
     collected_at: raw.collected_at ?? null,
     review_status: raw.review_status ?? raw.auto_register_status ?? null,
+    notice_id: raw.notice_id ?? null,
+    event_type: raw.event_type ?? 'event',
+    start_time: raw.start_time ?? '',
+    end_time: raw.end_time ?? '',
+    timezone: raw.timezone ?? 'Asia/Seoul',
+    attendance_mode: raw.attendance_mode ?? 'unknown',
+    schedule_status: raw.schedule_status ?? 'confirmed',
+    review_reason: raw.review_reason ?? '',
+    revision: raw.revision ?? 1,
+    can_register: raw.can_register ?? (USE_MOCK && Boolean(raw.end_date)),
+    registration_reason: raw.registration_reason ?? '',
+    sync_status: raw.sync_status ?? 'none',
+    ai_extracted: Boolean(raw.ai_extracted),
+    review_required: Boolean(raw.review_required),
+    action_status: raw.action_status ?? 'pending',
+    dismissed: Boolean(raw.dismissed),
+    user_modified: Boolean(raw.user_modified),
   };
 }
 
 /** 일정 목록 — 향후 GET /api/events */
-export async function getEvents() {
-  const data = USE_MOCK ? await mockResponse(mockStore.events) : await apiRequest('/api/events');
+export async function getEvents(includeDismissed = false) {
+  const data = USE_MOCK ? await mockResponse(mockStore.events.filter((e) => (includeDismissed || !e.dismissed) && mockStore.preferences.enabled_sources[e.source] !== false))
+    : await apiRequest(`/api/events?include_dismissed=${includeDismissed}`);
   return data.map(normalizeEvent);
+}
+
+export async function getEventDetail(id) {
+  if (USE_MOCK) {
+    const anchor = mockStore.events.find((event) => String(event.id) === String(id));
+    const events = mockSiblings(id);
+    return mockResponse({ notice_id: anchor.notice_id ?? null, dismissed: Boolean(anchor.dismissed), events: events.map(normalizeEvent) });
+  }
+  const data = await apiRequest(`/api/events/${encodeURIComponent(id)}`);
+  return { ...data, events: data.events.map(normalizeEvent) };
 }
 
 /** 북마크 설정 — PUT /api/events/:id/bookmark */
 export async function setBookmark(id, bookmarked) {
   if (USE_MOCK) {
-    updateMockEvent(id, { bookmarked });
+    mockSiblings(id).forEach((event) => updateMockEvent(event.id, { bookmarked }));
     return mockResponse({ id, bookmarked });
   }
   return apiRequest(`/api/events/${encodeURIComponent(id)}/bookmark`, { method: 'PUT', body: { bookmarked } });
+}
+
+export async function setActionStatus(id, action_status) {
+  if (USE_MOCK) { updateMockEvent(id, { action_status }); return mockResponse({ id, action_status }); }
+  return apiRequest(`/api/events/${encodeURIComponent(id)}/action-status`, { method: 'PUT', body: { action_status } });
+}
+
+export async function setDismissed(id, dismissed) {
+  if (USE_MOCK) { mockSiblings(id).forEach((event) => updateMockEvent(event.id, { dismissed })); return mockResponse({ id, dismissed }); }
+  return apiRequest(`/api/events/${encodeURIComponent(id)}/dismissed`, { method: 'PUT', body: { dismissed } });
+}
+
+export async function updateOverrides(id, overrides) {
+  if (USE_MOCK) return mockResponse(normalizeEvent(applyMockOverrides(id, overrides)));
+  return apiRequest(`/api/events/${encodeURIComponent(id)}/overrides`, { method: 'PATCH', body: overrides });
+}
+
+export async function reportEvent(id, reason, memo) {
+  const body = buildReportBody(reason, memo);
+  if (USE_MOCK) return mockResponse({ saved: true }, 300);
+  return apiRequest(`/api/events/${encodeURIComponent(id)}/reports`, { method: 'POST', body });
 }

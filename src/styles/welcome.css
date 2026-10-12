@@ -1,0 +1,9 @@
+﻿.welcome-page { min-height: 100dvh; display: grid; place-items: center; background: var(--color-canvas); padding: var(--space-6); }
+.welcome-card { width: 100%; max-width: 560px; padding: var(--space-8); }
+.welcome-header { display: flex; justify-content: space-between; align-items: center; font-size: var(--text-lg); }
+.welcome-header span { font-size: var(--text-sm); color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.welcome-progress { display: flex; gap: var(--space-2); margin: var(--space-5) 0 var(--space-6); }
+.welcome-progress span { flex: 1; height: 4px; border-radius: var(--radius-pill); background: var(--color-paper-3); }
+.welcome-progress span.is-done { background: var(--color-accent); }
+.welcome-card h1 { margin: 0 0 var(--space-2); font-size: var(--text-2xl); font-weight: 700; }
+.welcome-card .welcome-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-8); padding: 0; }
