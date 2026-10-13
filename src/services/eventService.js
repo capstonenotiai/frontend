@@ -1,6 +1,6 @@
 import { USE_MOCK } from '../config/app';
-import { apiRequest, mockResponse } from './apiClient';
-import { mockStore, updateMockEvent, mockSiblings, applyMockOverrides } from './mockStore';
+import { ApiError, apiRequest, mockResponse } from './apiClient';
+import { mockStore, updateMockEvent, mockSiblings, mockNoticeEvents, mockVisibleEvent, selectMockEvents, applyMockOverrides } from './mockStore';
 import { buildReportBody } from '../utils/settings';
 
 /**
@@ -46,7 +46,7 @@ export function normalizeEvent(raw) {
 
 /** 일정 목록 — 향후 GET /api/events */
 export async function getEvents(includeDismissed = false) {
-  const data = USE_MOCK ? await mockResponse(mockStore.events.filter((e) => (includeDismissed || !e.dismissed) && mockStore.preferences.enabled_sources[e.source] !== false))
+  const data = USE_MOCK ? await mockResponse(selectMockEvents(mockStore.events, { includeDismissed, enabledSources: mockStore.preferences.enabled_sources }))
     : await apiRequest(`/api/events?include_dismissed=${includeDismissed}`);
   return data.map(normalizeEvent);
 }
@@ -54,8 +54,11 @@ export async function getEvents(includeDismissed = false) {
 export async function getEventDetail(id) {
   if (USE_MOCK) {
     const anchor = mockStore.events.find((event) => String(event.id) === String(id));
-    const events = mockSiblings(id);
-    return mockResponse({ notice_id: anchor.notice_id ?? null, dismissed: Boolean(anchor.dismissed), events: events.map(normalizeEvent) });
+    if (!anchor || !mockVisibleEvent(anchor)) throw new ApiError('공개된 일정을 찾을 수 없습니다.', { status: 404 });
+    const siblings = mockNoticeEvents(id);
+    const dismissed = anchor.notice_id != null && siblings.some(event => event.dismissed);
+    const events = siblings.filter(mockVisibleEvent);
+    return mockResponse({ notice_id: anchor.notice_id ?? null, dismissed, events: events.map(event => normalizeEvent({ ...event, dismissed })) });
   }
   const data = await apiRequest(`/api/events/${encodeURIComponent(id)}`);
   return { ...data, events: data.events.map(normalizeEvent) };
@@ -76,7 +79,7 @@ export async function setActionStatus(id, action_status) {
 }
 
 export async function setDismissed(id, dismissed) {
-  if (USE_MOCK) { mockSiblings(id).forEach((event) => updateMockEvent(event.id, { dismissed })); return mockResponse({ id, dismissed }); }
+  if (USE_MOCK) { mockNoticeEvents(id).forEach((event) => updateMockEvent(event.id, { dismissed })); return mockResponse({ id, dismissed }); }
   return apiRequest(`/api/events/${encodeURIComponent(id)}/dismissed`, { method: 'PUT', body: { dismissed } });
 }
 
