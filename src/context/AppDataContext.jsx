@@ -27,6 +27,7 @@ export function AppDataProvider({ children, enabled = true }) {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [hiddenEvents, setHiddenEvents] = useState([]);
   const [registrationQueue, setRegistrationQueue] = useState([]);
+  const registrationTrigger = useRef(null);
   const [actionBusy, setActionBusy] = useState(false);
   const actionLock = useRef(false);
   const [summary, setSummary] = useState(null);
@@ -104,7 +105,9 @@ export function AppDataProvider({ children, enabled = true }) {
     }
   }, [refresh]);
 
-  const processRegistrations = useCallback(async (requests) => {
+  const processRegistrations = useCallback(async (requests, continueQueue = false) => {
+    // 비동기 조회와 busy 전환으로 열기 버튼이 포커스를 잃기 전에 보관한다.
+    if (!continueQueue && !actionLock.current && typeof document !== 'undefined') registrationTrigger.current = document.activeElement;
     let queued = false;
     const ok = await runAction(async () => {
       for (let index = 0; index < requests.length; index += 1) {
@@ -120,6 +123,7 @@ export function AppDataProvider({ children, enabled = true }) {
         else await calendarService.registerEvent(request.id);
       }
     });
+    if (continueQueue && !queued) setRegistrationQueue([]);
     if (ok && !queued) {
       const message = requests.find((request) => request.successMessage)?.successMessage;
       if (message) showUndo(message);
@@ -172,8 +176,8 @@ export function AppDataProvider({ children, enabled = true }) {
     if (ok) {
       if (request.successMessage) showUndo(request.successMessage);
       const remaining = registrationQueue.slice(1);
-      setRegistrationQueue([]);
-      if (remaining.length) await processRegistrations(remaining);
+      if (remaining.length) await processRegistrations(remaining, true);
+      else setRegistrationQueue([]);
     }
     return ok;
   }, [registrationQueue, runAction, processRegistrations, showUndo]);
@@ -225,7 +229,7 @@ export function AppDataProvider({ children, enabled = true }) {
       if (!current?.undo) return;
       if (await current.undo()) setUndoToast((latest) => latest === current ? null : latest);
     }} />
-    {registrationQueue[0] && <RegisterConfirmDialog request={registrationQueue[0]} busy={actionBusy}
+    {registrationQueue[0] && <RegisterConfirmDialog request={registrationQueue[0]} busy={actionBusy} triggerRef={registrationTrigger}
       onCancel={() => setRegistrationQueue([])} onConfirm={confirmRegistration} />}
   </AppDataContext.Provider>;
 }
