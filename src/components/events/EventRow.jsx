@@ -14,7 +14,7 @@ export function eventDateLabel(iso) {
   return date ? `${date.getMonth() + 1}.${date.getDate()}(${WEEKDAYS_KO[date.getDay()]})` : '날짜 미확인';
 }
 
-export default function EventRow({ event, mode = 'new', open = false, onToggle, idPrefix = 'event', actions, hideActions = false, rowRef }) {
+export default function EventRow({ event, mode = 'new', open = false, onToggle, idPrefix = 'event', actions, hideActions = false, rowRef, notificationTargetId }) {
   const { actionBusy, setActionStatus } = useAppData();
   const display = event.dday ? event : enrichEvent(event);
   const done = event.action_status === 'done';
@@ -45,7 +45,7 @@ export default function EventRow({ event, mode = 'new', open = false, onToggle, 
   </div>;
   return <div className={`event-item ${open ? 'is-open' : ''} ${expandable ? '' : 'is-hidden'}`}>
     {actions ? <div className="event-row-shell">{row}<div className="event-row-actions">{actions}</div></div> : row}
-    {expandable && <div id={detailId} hidden={!open}>{open && <EventExpand event={event} hideActions={hideActions} />}</div>}
+    {expandable && <div id={detailId} hidden={!open}>{open && <EventExpand event={event} hideActions={hideActions} notificationTargetId={notificationTargetId} />}</div>}
     
   </div>;
 }

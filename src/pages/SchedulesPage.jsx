@@ -2,6 +2,7 @@
 import { useLocation, useNavigationType, useSearchParams } from 'react-router-dom';
 import EmptyState from '../components/EmptyState';
 import EventRow, { categoryClass } from '../components/events/EventRow';
+import NoticeTimeline from '../components/events/NoticeTimeline';
 import NoticeListState from '../components/events/NoticeListState';
 import { SearchIcon, CloseIcon } from '../components/icons';
 import { INTEREST_CATEGORIES } from '../config/interestCategories';
@@ -9,6 +10,7 @@ import { SOURCES } from '../config/sources';
 import { useAppData } from '../context/AppDataContext';
 import { collectionTimeLabel, filterNotices } from '../utils/noticeFilters';
 import { getToday } from '../utils/date';
+import { getEventDetail } from '../services/eventService';
 
 // BrowserRouter의 반영이 늦어도 실제 탐색이 일어났는지 확인한다.
 const browserLocation = () => typeof window === 'undefined' ? null : `${window.location.href}\n${window.history.state?.key || ''}`;
@@ -23,6 +25,14 @@ export default function SchedulesPage() {
     locationKey: location.key, browserLocation: browserLocation(), ownKeys: [] });
   const [selectedId, setSelectedId] = useState(null);
   const [focusId, setFocusId] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const notificationLookup = useRef({ request: null, events, status });
+  const notificationPanel = useRef(null);
+  useLayoutEffect(() => {
+    notificationLookup.current.events = events;
+    notificationLookup.current.status = status;
+  }, [events, status]);
+  useEffect(() => () => { notificationLookup.current.request = null; }, []);
   const rows = useRef(new Map());
   const category = INTEREST_CATEGORIES.some(({ id }) => id === params.get('cat')) ? params.get('cat') : 'all';
   const source = SOURCES.some(({ id }) => id === params.get('src')) ? params.get('src') : 'all';
@@ -61,6 +71,10 @@ export default function SchedulesPage() {
       return;
     }
     invalidateSearch();
+    notificationLookup.current.request = null;
+    setNotification(null);
+    setFocusId(null);
+    setSelectedId(null);
     current.ownKeys = [];
     current.params = new URLSearchParams(params);
     current.browserLocation = browserLocation();
@@ -119,35 +133,62 @@ export default function SchedulesPage() {
     const current = search.current;
     const id = current.params.get('open');
     if (!id || status !== 'ready' || current.browserLocation !== browserLocation()) return;
-    const target = events.find((event) => String(event.id) === id);
-    const next = new URLSearchParams(current.params);
-    // 렌더의 분야·출처와 ref의 최신 값을 섞지 않고 같은 파라미터로 판정한다.
-    const latestCategory = INTEREST_CATEGORIES.some(({ id }) => id === next.get('cat')) ? next.get('cat') : 'all';
-    const latestSource = SOURCES.some(({ id }) => id === next.get('src')) ? next.get('src') : 'all';
-    if (target) {
-      if (!filterNotices(events, { category: latestCategory, source: latestSource, query: current.query }).some((event) => event.id === target.id)) {
-        invalidateSearch();
-        current.query = '';
-        setQuery('');
-        ['cat', 'src', 'q'].forEach((key) => next.delete(key));
+    const complete = (detail, error = '') => {
+      const latest = notificationLookup.current;
+      const current = search.current;
+      if (current.params.get('open') !== id || current.browserLocation !== browserLocation()) return;
+      const target = (detail?.events ?? latest.events).find((event) => String(event.id) === id);
+      const noticeId = target?.notice_id ?? detail?.notice_id;
+      // 상세에 실제 대상이 있는지 확인한 뒤 같은 공지의 목록 행으로 연결한다.
+      const row = target && !detail?.dismissed && !target.dismissed ? latest.events.find((event) => !event.dismissed && (
+        String(event.id) === id || detail?.events.some((item) => String(item.id) === String(event.id))
+        || (noticeId != null && event.notice_id != null && String(event.notice_id) === String(noticeId)))) : null;
+      const next = new URLSearchParams(current.params);
+      const latestCategory = INTEREST_CATEGORIES.some(({ id }) => id === next.get('cat')) ? next.get('cat') : 'all';
+      const latestSource = SOURCES.some(({ id }) => id === next.get('src')) ? next.get('src') : 'all';
+      if (target) {
+        if (row && !filterNotices(latest.events, { category: latestCategory, source: latestSource, query: current.query }).some((event) => event.id === row.id)) {
+          invalidateSearch();
+          current.query = '';
+          setQuery('');
+          ['cat', 'src', 'q'].forEach((key) => next.delete(key));
+        }
+        setNotification({ status: row ? 'ready' : 'detail', id, rowId: row?.id, target, detail });
+        setSelectedId(row?.id ?? null);
+        setFocusId(row?.id ?? target.id);
+      } else {
+        setNotification({ status: 'error', id, message: error || '알림 대상 일정이 없거나 공개되지 않았어요.' });
       }
-      setSelectedId(target.id);
-      setFocusId(target.id);
-    }
-    next.delete('open');
-    replaceParams(next);
-    // 알림 대기로 멈춘 검색은 재개하되, 초기화한 값과 진행 중인 조합은 다시 쓰지 않는다.
-    if ((next.get('q') || '') !== current.query) changeSearch(current.query);
+      latest.request = null;
+      next.delete('open');
+      replaceParams(next);
+      // 알림 대기로 멈춘 검색은 재개하되, 초기화한 값과 진행 중인 조합은 다시 쓰지 않는다.
+      if ((next.get('q') || '') !== current.query) changeSearch(current.query);
+    };
+    if (events.some((event) => String(event.id) === id && !event.dismissed)) { complete(); return; }
+    if (notificationLookup.current.request?.id === id) return;
+    const request = { id };
+    notificationLookup.current.request = request;
+    setNotification({ status: 'loading', id });
+    getEventDetail(id).then((detail) => {
+      if (notificationLookup.current.request !== request) return;
+      if (notificationLookup.current.status !== 'ready') { notificationLookup.current.request = null; return; }
+      complete(detail);
+    }).catch((error) => {
+      if (notificationLookup.current.request !== request) return;
+      if (notificationLookup.current.status !== 'ready') { notificationLookup.current.request = null; return; }
+      complete({ events: [] }, error.status === 404 ? '알림 대상 일정이 삭제되었거나 공개되지 않았어요.' : '알림 공지를 불러오지 못했어요. 다시 시도해 주세요.');
+    });
   }, [events, status, params, replaceParams, invalidateSearch, changeSearch]);
 
   useEffect(() => {
     if (!focusId) return;
-    const row = rows.current.get(focusId);
+    const row = rows.current.get(focusId) || (notification?.status === 'detail' && notification.target.id === focusId ? notificationPanel.current : null);
     if (!row) return;
     row.focus({ preventScroll: true });
     row.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
     setFocusId(null);
-  }, [focusId, visible]);
+  }, [focusId, visible, notification]);
 
   useEffect(() => {
     if (status === 'ready' && selectedId && !focusId && !params.has('open')
@@ -186,8 +227,25 @@ export default function SchedulesPage() {
         {query && <button type="button" aria-label="검색어 지우기" onClick={clearSearch}><CloseIcon /></button>}
       </div>
     </div>
+    {notification?.status === 'loading' && <p className="event-meta" role="status">알림 공지를 찾는 중…</p>}
+    {notification?.status === 'error' && <p className="event-error" role="alert">{notification.message} <button type="button" className="event-link" onClick={() => {
+      const next = new URLSearchParams(search.current.params);
+      next.set('open', notification.id);
+      replaceParams(next);
+    }}>다시 시도</button></p>}
+    {notification?.status === 'detail' && <section ref={notificationPanel} tabIndex={-1} aria-label="알림 대상 공지" className="event-expand without-actions">
+      <div className="event-expand-content">
+        <h3>{notification.target.title}</h3>
+        {notification.target.detail && <p className="event-summary">{notification.target.detail}</p>}
+        <p className="event-meta">{notification.detail.dismissed || notification.target.dismissed ? '숨긴 공지예요. 숨김 상태는 유지돼요.' : '현재 목록에 없는 공지예요. 알림 대상 일정을 확인해 주세요.'}</p>
+        <NoticeTimeline items={notification.detail.events} currentId={notification.target.id} notificationTargetId={notification.id} />
+        {notification.target.source_url && <a className="event-original" href={notification.target.source_url} target="_blank" rel="noreferrer">원문 보기</a>}
+        <button type="button" className="event-link" onClick={() => setNotification(null)}>알림 공지 닫기</button>
+      </div>
+    </section>}
     <NoticeListState>
       <div className="notice-list">{visible.map((event) => <EventRow key={event.id} event={event} mode="new" idPrefix="notices"
+        notificationTargetId={notification?.rowId === event.id ? notification.id : undefined}
         open={selectedId === event.id} onToggle={() => setSelectedId(selectedId === event.id ? null : event.id)}
         rowRef={(row) => { if (row) rows.current.set(event.id, row); else rows.current.delete(event.id); }} />)}</div>
       {!events.length ? <EmptyState>아직 모은 공지가 없어요.</EmptyState> : !visible.length && <EmptyState>

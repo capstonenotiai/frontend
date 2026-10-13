@@ -31,7 +31,7 @@ function EditEvent({ item, onClose }) {
   </form>;
 }
 
-export default function NoticeTimeline({ items, currentId, editable = false, showActions = false }) {
+export default function NoticeTimeline({ items, currentId, editable = false, showActions = false, notificationTargetId }) {
   const { actionBusy, syncEvent, unregisterDetailEvent, requestRegistration, showUndo } = useAppData();
   const [editing, setEditing] = useState(null);
   const today = toISODate(getToday());
@@ -41,10 +41,12 @@ export default function NoticeTimeline({ items, currentId, editable = false, sho
     if (await unregisterDetailEvent(item.id)) showUndo('등록을 해제했어요. Google 캘린더에서도 빠져요.', () => requestRegistration(item.id, interview));
   };
   return (
-      <ol className="event-timeline">{timeline.map((item) => <li key={item.id} className={`event-timeline-item ${item.id === event.id ? 'is-current' : ''} ${(item.end_date || item.start_date) && (item.end_date || item.start_date) < today ? 'is-past' : ''}`}>
+      <ol className="event-timeline">{timeline.map((item) => <li key={item.id} aria-current={notificationTargetId != null && String(item.id) === String(notificationTargetId) ? 'true' : undefined}
+        className={`event-timeline-item ${String(item.id) === String(notificationTargetId ?? event.id) ? 'is-current' : ''} ${(item.end_date || item.start_date) && (item.end_date || item.start_date) < today ? 'is-past' : ''}`}>
         <span className="event-timeline-dot" aria-hidden="true" /><div>
           {editing === item.id ? <EditEvent item={item} onClose={() => setEditing(null)} /> : <>
             <div className="event-timeline-title"><strong>{TYPE_LABELS[item.event_type] || '일정'}</strong>
+              {notificationTargetId != null && String(item.id) === String(notificationTargetId) && <span className="event-meta">알림 대상 · {item.registered ? '등록됨' : '미등록'}{item.action_status === 'done' ? ' · 완료' : ''}</span>}
               {item.user_modified && <span className="event-meta">내가 수정함</span>}
               {editable && <button type="button" className="event-edit-link" disabled={actionBusy} onClick={() => setEditing(item.id)}>수정</button>}
             </div>
