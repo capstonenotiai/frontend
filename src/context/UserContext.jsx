@@ -3,6 +3,7 @@ import { DEFAULT_AI_MODE_ID, getAiMode } from '../config/aiModes';
 import * as userService from '../services/userService';
 import { emptyAccountState, clearAccountStorage } from '../utils/account';
 import { buildPreferencesBody, buildProfileBody, canToggleSource, createSaveQueue, canToggleInterest } from '../utils/settings';
+import { plannerUserInputKey, plannerSourceInputKey } from '../utils/planner';
 
 const UserContext = createContext(null);
 const EMPTY_PROFILE = { name: '', email: '', major: '', grade: null, enrollment_status: 'unknown' };
@@ -15,6 +16,7 @@ export function UserProvider({ children }) {
   const [saveStates, setSaveStates] = useState({});
   const [sourcesVersion, setSourcesVersion] = useState(0);
   const [sessionVersion, setSessionVersion] = useState(0);
+  const [plannerInputs, setPlannerInputs] = useState(null);
   const profileRef = useRef(profile), preferencesRef = useRef(preferences);
   const states = useRef({}), revisions = useRef({}), timers = useRef({});
   const mounted = useRef(false), loadVersion = useRef(0);
@@ -32,8 +34,10 @@ export function UserProvider({ children }) {
     try {
       const [p, prefs] = await Promise.all([userService.getProfile(), userService.getPreferences()]);
       if (!mounted.current || version !== loadVersion.current) return;
+      if (p.email !== profileRef.current.email) ++accountVersion.current;
       profileRef.current = { ...EMPTY_PROFILE, ...p };
       preferencesRef.current = { ...EMPTY_PREFERENCES, ...prefs, ...buildPreferencesBody(prefs) };
+      setPlannerInputs({ profile: profileRef.current, preferences: preferencesRef.current });
       setProfile(profileRef.current); setPreferences(preferencesRef.current); setStatus('ready');
     } catch { if (mounted.current && version === loadVersion.current) setStatus('error'); }
   }, []);
@@ -54,6 +58,8 @@ export function UserProvider({ children }) {
       try {
         await (group === 'profile' ? userService.updateProfile(body) : userService.updatePreferences(body));
         if (account !== accountVersion.current) return false;
+        // 편집 중인 낙관적 상태 대신 실제 저장된 전체 본문만 추천 입력으로 확정한다.
+        if (mounted.current) setPlannerInputs(current => current ? { ...current, [group]: body } : current);
         if (group === 'preferences' && mounted.current) setSourcesVersion(version => version + 1);
         for (const [id, version] of Object.entries(included)) {
           if (revisions.current[id] !== version || !['saving', 'error'].includes(states.current[id])) continue;
@@ -116,10 +122,17 @@ export function UserProvider({ children }) {
     const empty = emptyAccountState();
     profileRef.current = empty.profile; preferencesRef.current = empty.preferences;
     setProfile(empty.profile); setPreferences(empty.preferences); setSaveStates(empty.saveStates);
+    setPlannerInputs(null);
     setSourcesVersion(0); setStatus('ready');
     setSessionVersion(value => value + 1);
   }, []);
-  return <UserContext.Provider value={{ profile, preferences, status, reloadUser, saveStates, sourcesVersion, sessionVersion, resetAccount, completeOnboarding, updateProfile, updatePreferences, toggleInterest, setSource, setNotification, retrySave, saveProfileStep, savePreferencesStep, activeMode: getAiMode(preferences.ai_mode), setAiMode }}>{children}</UserContext.Provider>;
+  const plannerUserKey = plannerInputs ? plannerUserInputKey(plannerInputs.profile, plannerInputs.preferences) : null;
+  const plannerSourceKey = plannerInputs ? plannerSourceInputKey(plannerInputs.preferences) : null;
+  const saving = group => Object.entries(saveStates).some(([key, value]) => key.startsWith(`${group}.`) && value === 'saving');
+  const plannerPending = Boolean(plannerInputs && (
+    (saving('profile') && plannerUserInputKey(profile, plannerInputs.preferences) !== plannerUserKey)
+    || (saving('preferences') && plannerUserInputKey(plannerInputs.profile, preferences) !== plannerUserKey)));
+  return <UserContext.Provider value={{ profile, preferences, status, plannerUserKey, plannerSourceKey, plannerPending, reloadUser, saveStates, sourcesVersion, sessionVersion, resetAccount, completeOnboarding, updateProfile, updatePreferences, toggleInterest, setSource, setNotification, retrySave, saveProfileStep, savePreferencesStep, activeMode: getAiMode(preferences.ai_mode), setAiMode }}>{children}</UserContext.Provider>;
 }
 export function useUser() {
   const context = useContext(UserContext);

@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { writePlannerCache } from '../src/utils/planner.js';
+import { writePlannerCache, plannerUserInputKey, plannerEventInputKey } from '../src/utils/planner.js';
 
 test('플래너·채팅: 실제 API 요청 계약과 오류 상태를 네트워크 없이 확인한다', async () => {
   const server = await createServer({ configFile: false, envDir: false, server: { middlewareMode: true, ws: false },
@@ -44,6 +44,8 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
   Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: storage });
   globalThis.__plannerApp = { events: [{ id: 'a', title: '장학 공지', registered: true, bookmarked: true, is_new: true }], calendarEvents: [{ id: 'a', registered: true }], hiddenEvents: [], status: 'ready', summary: {}, refresh() {} };
   globalThis.__plannerUser = { profile: { name: '검증 사용자', email: 'fixture', major: '소프트웨어학부', grade: 3, enrollment_status: 'enrolled' }, preferences: { interests: ['career'], enabled_sources: {}, notifications: {} }, status: 'ready' };
+  globalThis.__plannerApp.plannerEventKey = plannerEventInputKey(globalThis.__plannerApp.events, globalThis.__plannerApp.calendarEvents);
+  globalThis.__plannerUser.plannerUserKey = plannerUserInputKey(globalThis.__plannerUser.profile, globalThis.__plannerUser.preferences);
   const render = (Component, props = {}, url = '/planner') => renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [url] }, React.createElement(Component, props)));
   try {
     const { default: Planner, PlannerResults, PlannerLoading, PlannerError } = await server.ssrLoadModule('/src/pages/PlannerPage.jsx');
@@ -52,7 +54,7 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
     assert.match(intro, /내 일정 1건 · 새 공지 1건/); assert.match(intro, /소프트웨어학부 · 3학년 · 재학/); assert.match(intro, /진로·취업/);
     assert.doesNotMatch(intro, /Study|Explorer|Balanced|7일 브리핑|ai-chat-panel/);
     const data = { mode: 'focus', generated_at: new Date().toISOString(), items: [{ opportunity_id: 'o1', title: '핵심 공지', tier: 'core', reason: '먼저 볼 이유', focus_event_id: 'a', days_until_deadline: 3 }, { opportunity_id: 'o2', title: '접힌 공지', tier: 'secondary', reason: '미룰 이유', secondary_reason: 'schedule_conflict' }], needs_grouping_check: [{ opportunity_id: 'o3', title: '묶음 확인 공지' }], corrections: ['internal_correction'] };
-    writePlannerCache(storage, 'focus', 'fixture', data);
+    writePlannerCache(storage, 'focus', 'fixture', data, JSON.stringify([globalThis.__plannerUser.plannerUserKey, globalThis.__plannerApp.plannerEventKey]));
     const restored = render(Planner, {}, '/planner?mode=focus');
     assert.match(restored, /핵심 공지/); assert.match(restored, /후순위 1건/); assert.match(restored, /같은 공지인지 확인이 필요한 항목 1건/);
     assert.doesNotMatch(restored, /접힌 공지|묶음 확인 공지|internal_correction|planner-placeholder/);

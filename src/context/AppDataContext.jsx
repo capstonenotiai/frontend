@@ -8,6 +8,7 @@ import RegisterConfirmDialog from '../components/RegisterConfirmDialog';
 import UndoToast from '../components/UndoToast';
 import { useUser } from './UserContext';
 import { registrationTargets, needsConfirmation } from '../utils/registration';
+import { plannerEventInputKey } from '../utils/planner';
 
 /**
  * 일정 데이터 + 캘린더 등록 상태를 여러 화면(Dashboard / 일정 목록 / 캘린더 / 사이드바)이 공유.
@@ -16,7 +17,10 @@ import { registrationTargets, needsConfirmation } from '../utils/registration';
 const AppDataContext = createContext(null);
 
 export function AppDataProvider({ children, enabled = true }) {
-  const { preferences, sourcesVersion } = useUser();
+  const { profile, preferences, sourcesVersion, plannerSourceKey } = useUser();
+  const account = useRef(null);
+  account.current = { scope: profile.email, sourcesKey: plannerSourceKey };
+  const [plannerSnapshot, setPlannerSnapshot] = useState(null);
   const enabledSources = preferences.enabled_sources;
   const refreshVersion = useRef(0);
   const [events, setEvents] = useState([]);
@@ -42,20 +46,23 @@ export function AppDataProvider({ children, enabled = true }) {
   const loadHidden = useCallback(async (version = refreshVersion.current) => {
     const items = await eventService.getEvents(true);
     if (version === refreshVersion.current) setHiddenEvents(items.filter((event) => event.dismissed));
+    return items.filter((event) => event.dismissed);
   }, []);
 
   const refresh = useCallback(async ({ silent = false } = {}) => {
     const version = ++refreshVersion.current;
+    const inputAccount = account.current;
     if (!silent) setStatus('loading');
     setError(null);
     try {
-      const [nextEvents, nextSummary, nextCalendar] = await Promise.all([
+      const [nextEvents, nextSummary, nextCalendar, nextHidden] = await Promise.all([
         eventService.getEvents(false),
         dashboardService.getDashboardSummary(),
         calendarService.getRegisteredEvents(),
         loadHidden(version),
       ]);
-      if (version !== refreshVersion.current) return false;
+      if (version !== refreshVersion.current || inputAccount.scope !== account.current.scope) return false;
+      setPlannerSnapshot({ ...inputAccount, version, key: plannerEventInputKey(nextEvents, nextCalendar, nextHidden) });
       setEvents(nextEvents);
       setSummary(nextSummary);
       setCalendarEvents(nextCalendar);
@@ -72,7 +79,7 @@ export function AppDataProvider({ children, enabled = true }) {
   useEffect(() => {
     if (enabled) refresh();
     else ++refreshVersion.current; // 공개 화면으로 나간 뒤 이전 조회 응답을 반영하지 않는다.
-  }, [refresh, enabled]);
+  }, [refresh, enabled, profile.email]);
   useEffect(() => { if (enabled && sourcesVersion) refresh({ silent: true }); }, [sourcesVersion, refresh, enabled]);
 
   // Bundle writes can partially succeed in Google. Always reload the server's actual state.
@@ -83,7 +90,10 @@ export function AppDataProvider({ children, enabled = true }) {
     setActionError(null);
     try {
       await request();
-      return await refresh({ silent: true });
+      const refreshed = await refresh({ silent: true });
+      // 저장은 성공했으나 재조회가 실패했다면 이전 입력을 최신으로 취급하지 않는다.
+      if (!refreshed) setPlannerSnapshot(current => current?.version === refreshVersion.current ? current : null);
+      return refreshed;
     } catch (err) {
       await refresh({ silent: true });
       setActionError(err);
@@ -177,9 +187,12 @@ export function AppDataProvider({ children, enabled = true }) {
   const enrichedHidden = useMemo(() => hiddenEvents.filter(event => enabledSources[event.source] !== false).map((event) => enrichEvent(event, getToday())), [hiddenEvents, enabledSources]);
 
   const clearActionError = useCallback(() => setActionError(null), []);
+  const plannerEventKey = plannerSnapshot?.scope === profile.email && plannerSnapshot?.sourcesKey === plannerSourceKey
+    ? plannerSnapshot.key : null;
   const value = useMemo(
     () => ({
       events: enrichedEvents,
+      plannerEventKey,
       calendarEvents: enrichedCalendar,
       hiddenEvents: enrichedHidden,
       loadHidden,
@@ -203,7 +216,7 @@ export function AppDataProvider({ children, enabled = true }) {
       registerAll,
       syncEvent,
     }),
-    [enrichedEvents, enrichedCalendar, enrichedHidden, loadHidden, actionBusy, showUndo, updateOverrides, saveBookmark, setActionStatus, setDismissed, requestRegistration, registerInterview, unregisterDetailEvent, summary, status, error, actionError, clearActionError, refresh, toggleRegister, toggleBookmark, registerAll, syncEvent],
+    [enrichedEvents, plannerEventKey, enrichedCalendar, enrichedHidden, loadHidden, actionBusy, showUndo, updateOverrides, saveBookmark, setActionStatus, setDismissed, requestRegistration, registerInterview, unregisterDetailEvent, summary, status, error, actionError, clearActionError, refresh, toggleRegister, toggleBookmark, registerAll, syncEvent],
   );
 
   return <AppDataContext.Provider value={value}>{children}

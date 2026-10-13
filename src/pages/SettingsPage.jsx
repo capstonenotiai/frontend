@@ -46,7 +46,7 @@ export default function SettingsPage() {
     </Section>
     <Section title="계정">
       <div className="settings-account"><span className="settings-avatar" aria-hidden="true">{profile.name.slice(0, 1)}</span><div><p className="settings-account-label">Google 계정</p><strong>{profile.name}</strong><p className="settings-description">{profile.email}</p></div>
-        <button className="settings-button" type="button" disabled={busy} onClick={async () => { if (busy) return; setBusy(true); setError(''); try { await logout(); navigate('/', { replace: true }); } catch { setError('로그아웃하지 못했어요. 다시 시도해 주세요.'); } finally { setBusy(false); } }}>{busy ? '로그아웃 중…' : '로그아웃'}</button>
+        <button className="settings-button" type="button" disabled={busy} onClick={async () => { if (busy) return; setBusy(true); setError(''); try { await logout(); resetAccount(); navigate('/', { replace: true }); } catch { setError('로그아웃하지 못했어요. 다시 시도해 주세요.'); } finally { setBusy(false); } }}>{busy ? '로그아웃 중…' : '로그아웃'}</button>
       </div>{error && <p className="settings-error" role="alert">{error}</p>}
       <div className="settings-delete-row"><button ref={deleteTrigger} type="button" className="settings-button quiet danger-text" disabled={busy} onClick={() => setDeleteOpen(true)}>계정 삭제</button></div>
     </Section>

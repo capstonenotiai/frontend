@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AI_MODES } from '../config/aiModes';
 import { getInterestCategory } from '../config/interestCategories';
@@ -7,7 +7,7 @@ import { useUser } from '../context/UserContext';
 import EventExpand from '../components/events/EventExpand';
 import { ChevronIcon, ExternalLinkIcon } from '../components/icons';
 import { getRecommendations } from '../services/plannerService';
-import { LABEL_FIELDS, countPlannerLabels, plannerLabel, secondaryLabel, plannerSummary, plannerErrorMessage, recommendationTime, readPlannerCache, writePlannerCache, plannerStorage, refreshFailureState, refreshLimitMessage, REFRESH_NOTICE_MS } from '../utils/planner';
+import { LABEL_FIELDS, countPlannerLabels, plannerLabel, secondaryLabel, plannerSummary, plannerErrorMessage, recommendationTime, readPlannerCache, writePlannerCache, invalidatePlannerCache, plannerStorage, refreshFailureState, refreshLimitMessage, REFRESH_NOTICE_MS } from '../utils/planner';
 
 function Arrow() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -79,10 +79,13 @@ export default function PlannerPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const mode = AI_MODES.some((entry) => entry.id === params.get('mode')) ? params.get('mode') : null;
-  const { events, calendarEvents } = useAppData();
-  const { profile, preferences, status: userStatus } = useUser();
-  const scope = profile.email || 'session';
-  const [state, setState] = useState(() => ({ mode, data: mode ? readPlannerCache(plannerStorage(), mode, scope) : null, status: 'idle' }));
+  const { events, calendarEvents, plannerEventKey, actionBusy, status: dataStatus, error: dataError, refresh: refreshData } = useAppData();
+  const { profile, preferences, status: userStatus, plannerUserKey, plannerPending, sessionVersion } = useUser();
+  const scope = profile.email;
+  const inputKey = plannerUserKey != null && plannerEventKey != null ? JSON.stringify([plannerUserKey, plannerEventKey]) : null;
+  const requestKey = JSON.stringify([scope, sessionVersion, inputKey]);
+  const ready = Boolean(scope && userStatus === 'ready' && inputKey);
+  const [state, setState] = useState(() => ({ mode, key: requestKey, data: mode && ready ? readPlannerCache(plannerStorage(), mode, scope, Date.now(), inputKey) : null, status: 'idle' }));
   const [refresh, setRefresh] = useState(0);
   const force = useRef(false);
   const lastResult = useRef(null);
@@ -93,31 +96,48 @@ export default function PlannerPage() {
     return () => clearTimeout(timer);
   }, [limitNotice]);
   const requestId = useRef(0);
+  const pending = useRef(false);
+  // commit 후 passive effect 정리 전 도착하는 이전 응답도 차단한다.
+  useLayoutEffect(() => { ++requestId.current; }, [mode, requestKey, ready]);
+  useLayoutEffect(() => { pending.current = plannerPending || actionBusy; });
+  useLayoutEffect(() => {
+    force.current = false;
+    lastResult.current = null;
+    setLimitNotice(null);
+  }, [requestKey]);
   useEffect(() => {
     const id = ++requestId.current;
-    if (!mode || userStatus === 'loading') return;
+    if (!mode || !ready) return;
     const storage = plannerStorage();
+    invalidatePlannerCache(storage, scope, inputKey);
     const refreshRequest = force.current;
-    const previousData = lastResult.current?.mode === mode ? lastResult.current.data : readPlannerCache(storage, mode, scope);
-    const cached = refreshRequest ? null : readPlannerCache(storage, mode, scope);
+    const previousData = lastResult.current?.mode === mode ? lastResult.current.data : readPlannerCache(storage, mode, scope, Date.now(), inputKey);
+    const cached = refreshRequest ? null : readPlannerCache(storage, mode, scope, Date.now(), inputKey);
     force.current = false;
-    if (cached) { lastResult.current = { mode, data: cached }; setState({ mode, status: 'ready', data: cached }); return; }
+    if (cached) { lastResult.current = { mode, data: cached }; setState({ mode, key: requestKey, status: 'ready', data: cached }); return; }
     const controller = new AbortController();
-    setState({ mode, status: 'loading', data: null });
-    getRecommendations(mode, { signal: controller.signal, refresh: refreshRequest }).then((data) => {
+    let timer;
+    setState({ mode, key: requestKey, status: 'loading', data: null });
+    const request = () => {
       if (id !== requestId.current || controller.signal.aborted) return;
-      if (data?.mode !== mode || !Array.isArray(data.items)) throw new Error('잘못된 추천 응답');
-      writePlannerCache(storage, mode, scope, data);
-      lastResult.current = { mode, data };
-      setState({ mode, status: 'ready', data });
-    }).catch((error) => {
-      if (id !== requestId.current || controller.signal.aborted) return;
-      if (error.status === 401) { navigate('/', { replace: true }); return; }
-      if (error.status === 429) setLimitNotice({ mode, message: refreshLimitMessage(error) });
-      setState(refreshFailureState(mode, previousData, error));
-    });
-    return () => controller.abort();
-  }, [mode, scope, userStatus, refresh, navigate]);
+      // 저장 큐와 연속 변경이 끝난 입력만 요청한다. StrictMode의 첫 setup도 정리된다.
+      if (pending.current) { timer = setTimeout(request, 150); return; }
+      getRecommendations(mode, { signal: controller.signal, refresh: refreshRequest }).then((data) => {
+        if (id !== requestId.current || controller.signal.aborted) return;
+        if (data?.mode !== mode || !Array.isArray(data.items)) throw new Error('잘못된 추천 응답');
+        writePlannerCache(storage, mode, scope, data, inputKey);
+        lastResult.current = { mode, data };
+        setState({ mode, key: requestKey, status: 'ready', data });
+      }).catch((error) => {
+        if (id !== requestId.current || controller.signal.aborted) return;
+        if (error.status === 401) { navigate('/', { replace: true }); return; }
+        if (error.status === 429) setLimitNotice({ mode, message: refreshLimitMessage(error) });
+        setState({ ...refreshFailureState(mode, previousData, error), key: requestKey });
+      });
+    };
+    timer = setTimeout(request, 150);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [mode, scope, inputKey, requestKey, ready, refresh, navigate]);
   const choose = (next) => {
     if (next === mode) return;
     force.current = false;
@@ -129,7 +149,9 @@ export default function PlannerPage() {
   const fresh = events.filter((event) => !event.dismissed && event.is_new).length;
   const profileText = [profile.major, profile.grade ? `${profile.grade}학년` : '', enrollmentLabels[profile.enrollment_status]].filter(Boolean).join(' · ') || '프로필 없음';
   const interests = (preferences.interests ?? []).map((id) => getInterestCategory(id)?.label).filter(Boolean).join(', ') || '선택 안 함';
-  const current = state.mode === mode ? state : { status: 'loading' };
+  const current = ready && state.mode === mode && state.key === requestKey ? state
+    : userStatus === 'ready' && scope && dataStatus === 'error' && plannerEventKey == null
+      ? { status: 'error', error: dataError, inputError: true } : { status: 'loading' };
   return <div className="planner-page">
     {!mode ? <>
       <header className="planner-intro"><h1>어떤 도움이 필요한가요?</h1><p>내 일정과 프로필을 보고 정리해 드려요.</p></header>
@@ -138,7 +160,7 @@ export default function PlannerPage() {
       <p className="planner-fine">날짜와 지원 조건은 NotiAI가 공지에서 직접 정리하고, AI는 그 내용만 보고 판단해요. 처음 추천은 20초쯤 걸리고 30분 동안 저장돼요.</p>
     </> : <>
       <div className="planner-toolbar"><div className="planner-segment" aria-label="추천 모드">{AI_MODES.map((entry) => <button type="button" key={entry.id} aria-pressed={mode === entry.id} onClick={() => choose(entry.id)}>{entry.name}</button>)}</div><span className="planner-time">{current.data && recommendationTime(current.data.generated_at)}</span><PlannerRefresh loading={current.status === 'loading'} notice={limitNotice?.mode === mode ? limitNotice.message : ''} onRefresh={reload} /></div>
-      {current.status === 'error' ? <PlannerError error={current.error} onRetry={() => { force.current = false; setRefresh(value => value + 1); }} /> : current.data ? <PlannerResults key={`${mode}:${current.data.generated_at}`} mode={mode} data={current.data} events={combined} /> : <PlannerLoading />}
+      {current.status === 'error' ? <PlannerError error={current.error} onRetry={() => { if (current.inputError) { refreshData(); return; } force.current = false; setRefresh(value => value + 1); }} /> : current.data ? <PlannerResults key={`${mode}:${current.data.generated_at}`} mode={mode} data={current.data} events={combined} /> : <PlannerLoading />}
     </>}
   </div>;
 }

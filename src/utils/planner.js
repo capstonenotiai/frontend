@@ -37,14 +37,40 @@ export function cacheIsFresh(entry, mode, now = Date.now()) {
     && Number.isFinite(time) && now >= time && now - time < CACHE_TTL;
 }
 const cacheKey = (mode, scope) => `notiai:planner:v1:${scope}:${mode}`;
-export function readPlannerCache(storage, mode, scope, now = Date.now()) {
+// 알림 설정·화면용 AI 모드는 추천 입력이 아니다. 순서만 다른 관심분야도 같은 입력이다.
+export function plannerUserInputKey(profile = {}, preferences = {}) {
+  return JSON.stringify([profile.major ?? '', profile.grade ?? null, profile.enrollment_status ?? 'unknown',
+    [...new Set(preferences.interests ?? [])].sort(),
+    plannerSourceInputKey(preferences)]);
+}
+export function plannerSourceInputKey(preferences = {}) {
+  return JSON.stringify(['cbnu', 'wevity', 'contestkorea'].map(id => preferences.enabled_sources?.[id] !== false));
+}
+const EVENT_INPUT_FIELDS = ['id', 'notice_id', 'title', 'detail', 'source', 'source_url', 'category',
+  'start_date', 'end_date', 'start_time', 'end_time', 'timezone', 'location', 'event_type',
+  'attendance_mode', 'schedule_status', 'revision', 'review_status', 'review_required',
+  'review_reason', 'can_register', 'registered', 'bookmarked', 'action_status', 'dismissed', 'is_new'];
+export function plannerEventInputKey(events = [], calendar = [], hidden = []) {
+  return JSON.stringify([events, calendar, hidden].map(items => items
+    .map(event => JSON.stringify(EVENT_INPUT_FIELDS.map(field => event[field] ?? null))).sort()));
+}
+export function invalidatePlannerCache(storage, scope, inputKey) {
+  for (const mode of Object.keys(PLANNER_LABELS)) {
+    try {
+      const key = cacheKey(mode, scope);
+      const entry = JSON.parse(storage?.getItem(key) ?? 'null');
+      if (entry && entry.inputKey !== inputKey) storage?.removeItem(key);
+    } catch { /* Storage may be blocked or malformed. Reads still reject mismatched inputs. */ }
+  }
+}
+export function readPlannerCache(storage, mode, scope, now = Date.now(), inputKey) {
   try {
     const entry = JSON.parse(storage?.getItem(cacheKey(mode, scope)) ?? 'null');
-    return cacheIsFresh(entry, mode, now) ? entry.data : null;
+    return (inputKey === undefined || entry?.inputKey === inputKey) && cacheIsFresh(entry, mode, now) ? entry.data : null;
   } catch { return null; }
 }
-export function writePlannerCache(storage, mode, scope, data) {
-  try { storage?.setItem(cacheKey(mode, scope), JSON.stringify({ mode, generated_at: data.generated_at, data })); } catch { /* Storage may be blocked or full. */ }
+export function writePlannerCache(storage, mode, scope, data, inputKey) {
+  try { storage?.setItem(cacheKey(mode, scope), JSON.stringify({ mode, generated_at: data.generated_at, data, inputKey })); } catch { /* Storage may be blocked or full. */ }
 }
 export function plannerStorage() {
   try { return globalThis.sessionStorage; } catch { return null; }

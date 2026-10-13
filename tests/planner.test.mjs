@@ -1,6 +1,36 @@
 ﻿import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PLANNER_LABELS, SECONDARY_LABELS, plannerLabel, secondaryLabel, countPlannerLabels, plannerSummary, cacheIsFresh, readPlannerCache, writePlannerCache, trimChatHistory, recommendationTime, plannerErrorMessage } from '../src/utils/planner.js';
+import { PLANNER_LABELS, SECONDARY_LABELS, plannerLabel, secondaryLabel, countPlannerLabels, plannerSummary, cacheIsFresh, readPlannerCache, writePlannerCache, invalidatePlannerCache, plannerUserInputKey, plannerEventInputKey, trimChatHistory, recommendationTime, plannerErrorMessage } from '../src/utils/planner.js';
+
+test('R03: 입력이 일치할 때만 30분 캐시를 사용하고 모든 모드의 이전 입력을 무효화한다', () => {
+  const now = Date.now(); const values = new Map();
+  const storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+  for (const mode of Object.keys(PLANNER_LABELS)) {
+    const data = { mode, generated_at: new Date(now).toISOString(), items: [] };
+    writePlannerCache(storage, mode, 'a', data, 'old');
+    assert.deepEqual(readPlannerCache(storage, mode, 'a', now + 29 * 60000, 'old'), data);
+    assert.equal(readPlannerCache(storage, mode, 'a', now + 30 * 60000, 'old'), null);
+    assert.equal(readPlannerCache(storage, mode, 'a', now, 'new'), null);
+  }
+  writePlannerCache(storage, 'focus', 'b', { mode: 'focus', generated_at: new Date(now).toISOString(), items: [] }, 'old');
+  invalidatePlannerCache(storage, 'a', 'new'); assert.equal(values.size, 1);
+  assert.ok(readPlannerCache(storage, 'focus', 'b', now, 'old'));
+  writePlannerCache(storage, 'priority', 'a', { mode: 'priority', generated_at: new Date(now).toISOString(), items: [] });
+  assert.equal(readPlannerCache(storage, 'priority', 'a', now, 'new'), null, '입력 정보가 없는 예전 캐시는 재사용하지 않는다');
+  assert.doesNotThrow(() => invalidatePlannerCache({ getItem() { throw Error('blocked'); } }, 'a', 'new'));
+});
+test('R03: 추천 입력 키는 배열 순서·UI 파생값·알림 설정을 무시하고 실제 입력 변경을 구별한다', () => {
+  const profile = { major: '수학', grade: 3, enrollment_status: 'enrolled' };
+  const prefs = { interests: ['contest', 'career'] };
+  const key = plannerUserInputKey(profile, prefs);
+  assert.equal(plannerUserInputKey({ ...profile, name: '표시 이름' }, { interests: ['career', 'contest'], notifications: { email: false }, ai_mode: 'focus' }), key);
+  for (const patch of [{ major: '물리' }, { grade: 4 }, { enrollment_status: 'leave' }]) assert.notEqual(plannerUserInputKey({ ...profile, ...patch }, prefs), key);
+  assert.notEqual(plannerUserInputKey(profile, { ...prefs, enabled_sources: { cbnu: false } }), key);
+  const events = [{ id: 'a', registered: false, bookmarked: false, action_status: 'pending', dismissed: false, end_date: '2026-12-20' }, { id: 'b' }];
+  const eventKey = plannerEventInputKey(events);
+  assert.equal(plannerEventInputKey([...events].reverse().map(e => ({ ...e, dday: 'D-1', sync_status: 'synced' }))), eventKey);
+  for (const patch of [{ registered: true }, { bookmarked: true }, { action_status: 'done' }, { dismissed: true }, { end_date: '2026-12-21' }]) assert.notEqual(plannerEventInputKey([{ ...events[0], ...patch }, events[1]]), eventKey);
+});
 
 test('플래너: 모든 API 라벨과 후순위 이유를 한국어로 매핑하고 알 수 없는 값은 숨긴다', () => {
   for (const [mode, labels] of Object.entries(PLANNER_LABELS)) for (const [value, label] of Object.entries(labels)) assert.equal(plannerLabel(mode, value), label);
