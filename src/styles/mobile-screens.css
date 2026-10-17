@@ -29,6 +29,10 @@
   .notice-tabs span { font-size: var(--text-xs); }
   .notice-categories { flex-wrap: wrap; }
   .notice-chip, .notice-source, .notice-search, .calendar-category { min-height: 44px; }
+  .notice-tools { flex-direction: column; align-items: stretch; }
+  .notice-search { order: 1; width: 100%; }
+  .notice-search input { flex: 1; width: 100%; }
+  .notice-source { order: 2; width: 100%; margin-left: 0; }
   .event-row { grid-template-columns: 44px minmax(0, 1fr) auto; gap: var(--space-2); padding: var(--space-3) 0; }
   .event-row.has-check { grid-template-columns: 44px 44px minmax(0, 1fr); }
   .event-row .event-category { grid-column: auto; padding: 1px var(--space-1); font-size: var(--text-xs); }
@@ -38,16 +42,15 @@
   .event-title { overflow-wrap: anywhere; }
   .event-meta { overflow-wrap: anywhere; font-size: var(--text-xs); }
   .event-category i { width: var(--space-1); height: var(--space-1); }
-  .home-new-list .event-row { grid-template-columns: 44px minmax(0, 1fr) var(--space-8) auto; gap: var(--space-1); }
-  .home-new-list .event-title-group { display: contents; }
+  .home-new-list .event-row { grid-template-columns: 44px minmax(0, 1fr) auto; gap: var(--space-2); }
   .home-new-list .event-title-line { flex-wrap: wrap; min-width: 0; }
   .home-new-list .event-title { flex-basis: 100%; }
-  .home-new-list .event-meta-detail { display: none; }
-  .home-new-list .event-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .home-new-list .event-new, .home-new-list .event-review { flex-shrink: 0; }
   .home-new-list .event-title-line:has(.event-review) { flex-wrap: wrap; }
-  .home-new-list .event-meta { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-  .event-tick { width: 44px; height: 44px; border-width: 1px; }
+  .event-tick, .event-tick.is-on { width: 44px; height: 44px; border: 0; background: transparent; }
+  .event-tick::before { content: ''; grid-area: 1 / 1; width: calc(var(--space-6) - 2px); height: calc(var(--space-6) - 2px); box-sizing: border-box; border: 2px solid var(--color-control); border-radius: var(--radius-sm); background: var(--color-paper); }
+  .event-tick.is-on::before { border-color: var(--color-accent); background: var(--color-accent); }
+  .event-tick > svg { grid-area: 1 / 1; z-index: 1; }
   .event-expand { padding: var(--space-3); gap: var(--space-3); }
   .event-summary { white-space: normal; overflow-wrap: anywhere; }
   .event-actions, .event-row-actions, .calendar-popover-actions, .event-edit-actions { display: flex; flex-direction: column; width: 100%; max-width: none; align-items: stretch; margin: 0; }
