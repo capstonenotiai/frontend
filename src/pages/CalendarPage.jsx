@@ -9,6 +9,7 @@ import { useAppData } from '../context/AppDataContext';
 import { useCalendarMonth } from '../hooks/useCalendarMonth';
 import { getToday, toISODate, WEEKDAYS_KO, formatMonthLabel } from '../utils/date';
 import { buildMonthGrid, filterByCategories, layoutMonthWeek } from '../utils/monthCalendar';
+import useMobile from '../hooks/useMobile';
 
 function CalendarEvent({ event, onClick, className = '', style }) {
   const done = event.action_status === 'done';
@@ -19,6 +20,9 @@ function CalendarEvent({ event, onClick, className = '', style }) {
 }
 
 export default function CalendarPage() {
+  const mobile = useMobile();
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [monthList, setMonthList] = useState(false);
   const { calendarEvents, status, error, actionError, refresh } = useAppData();
   const { year, month, goPrev, goNext, goToday } = useCalendarMonth();
   const [params, setParams] = useSearchParams();
@@ -36,6 +40,9 @@ export default function CalendarPage() {
   const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
   const hasMonthEvents = layouts.some(({ days }) => days.some((day) => day.date.startsWith(monthKey) && day.ids.length));
   const selectedEvent = selection?.type === 'event' ? byId.get(selection.id) : null;
+  const activeDate = weeks.flat().includes(selectedDate) ? selectedDate : todayISO.startsWith(monthKey) ? todayISO : `${monthKey}-01`;
+  const agendaIds = new Set(layouts.flatMap(({ days }) => days).filter(day => monthList ? day.date.startsWith(monthKey) : day.date === activeDate).flatMap(day => day.ids));
+  const agenda = events.filter(event => agendaIds.has(event.id));
   useEffect(() => { close(); }, [year, month, offKey, close]);
   useEffect(() => { if (selection?.type === 'event' && !selectedEvent) close(); }, [selection, selectedEvent, close]);
   const changeCategories = (nextOff) => {
@@ -76,19 +83,28 @@ export default function CalendarPage() {
           const isToday = day.date === todayISO;
           return <div key={day.date} className="calendar-day" role="group" style={{ gridColumn: col + 1 }}
             aria-label={`${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일 ${WEEKDAYS_KO[col]}요일${isToday ? ', 오늘' : ''}`}>
-            <span className={`calendar-date ${date.getUTCMonth() !== month ? 'outside-month' : ''} ${isToday ? 'is-today' : ''}`}>{date.getUTCDate()}</span>
-            {status === 'loading' ? (col % 2 === 0 && <span className="calendar-skeleton" aria-hidden="true" />) : <>
+            {mobile ? <button className="calendar-date-pick" type="button" aria-label={`${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일 ${WEEKDAYS_KO[col]}요일${isToday ? ', 오늘' : ''}`} aria-pressed={!monthList && day.date === activeDate} aria-controls="calendar-agenda" onClick={() => {setSelectedDate(day.date); setMonthList(false);}}>
+              <span className={`calendar-date ${date.getUTCMonth() !== month ? 'outside-month' : ''} ${isToday ? 'is-today' : ''}`}>{date.getUTCDate()}</span>
+              <span className="week-dots" aria-hidden="true">{day.ids.slice(0, 3).map(id => <i key={id} className={categoryClass(byId.get(id).category)} />)}{day.ids.length > 3 && <small>+{day.ids.length - 3}</small>}</span>
+            </button> : <span className={`calendar-date ${date.getUTCMonth() !== month ? 'outside-month' : ''} ${isToday ? 'is-today' : ''}`}>{date.getUTCDate()}</span>}
+            {status === 'loading' ? (col % 2 === 0 && <span className="calendar-skeleton" aria-hidden="true" />) : !mobile && <>
               {day.chips.map(({ id, lane }) => <CalendarEvent key={id} event={byId.get(id)} style={{ gridRow: lane + 2 }} onClick={(e) => openEvent(id, e.currentTarget)} />)}
               {day.more > 0 && <button type="button" className="calendar-more" aria-label={`${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일 일정 ${day.more}개 더 보기`}
                 onClick={(e) => setSelection({ type: 'day', date: day.date, anchor: e.currentTarget })}>+{day.more}개 더</button>}
             </>}
           </div>;
         })}
-        {status !== 'loading' && layouts[weekIndex].bars.map((bar) => <CalendarEvent key={bar.id} event={byId.get(bar.id)}
+        {!mobile && status !== 'loading' && layouts[weekIndex].bars.map((bar) => <CalendarEvent key={bar.id} event={byId.get(bar.id)}
           className={`calendar-bar ${bar.openLeft ? 'open-left' : ''} ${bar.openRight ? 'open-right' : ''}`}
           style={{ gridColumn: `${bar.colStart} / ${bar.colEnd + 1}`, gridRow: bar.lane + 2 }} onClick={(e) => openEvent(bar.id, e.currentTarget)} />)}
       </div>)}
     </div>
+    {mobile && <section id="calendar-agenda" className="calendar-agenda" aria-label="선택한 일정" aria-busy={status === 'loading'}>
+      <h3>{monthList ? '이달 일정' : `${Number(activeDate.slice(5, 7))}월 ${Number(activeDate.slice(8))}일 일정`} · {agenda.length}건</h3>
+      <div className="calendar-day-list">{agenda.map(event => <CalendarEvent key={event.id} event={event} onClick={e => openEvent(event.id, e.currentTarget)} />)}</div>
+      {!agenda.length && <p className="week-hint">{status === 'loading' ? '일정을 불러오는 중…' : '선택한 날에 등록한 일정이 없어요.'}</p>}
+      <button className="home-view-all" type="button" aria-pressed={monthList} onClick={() => setMonthList(value => !value)}>{monthList ? '선택한 날 보기' : '이달 목록 보기'}</button>
+    </section>}
     {selectedEvent && <EventPopover event={selectedEvent} anchor={selection.anchor} fallbackRef={fallbackRef} onClose={close} />}
     {selection?.type === 'day' && <AnchoredDialog anchor={selection.anchor} fallbackRef={fallbackRef} title={`${Number(selection.date.slice(5, 7))}월 ${Number(selection.date.slice(8))}일 일정`} onClose={close}>
       <div className="calendar-day-list">{dayItems.map((event) => <CalendarEvent key={event.id} event={event} onClick={() => openEvent(event.id, selection.anchor)} />)}</div>
