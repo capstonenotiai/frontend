@@ -198,9 +198,10 @@ test('R02 공지 검색의 실제 React DOM·BrowserRouter 회귀', {
       await page.clock.runFor(500); await query(''); assert.equal(params().has('q'), false);
     }, '/schedules?q=old');
 
-    await run('전체 필터 초기화는 로컬 검색어와 예약을 함께 비운다', async ({ page, input, params, query, rows }) => {
+    await run('전체 필터 초기화는 로컬 검색어와 예약을 함께 비운다', async ({ page, input, params, query, rows, settleNavigation }) => {
       await input.fill('없는검색어');
       await page.getByRole('button', { name: '필터 초기화' }).click();
+      await settleNavigation();
       await query(''); await rows(5);
       await page.clock.runFor(500);
       for (const key of ['q', 'cat', 'src']) assert.equal(params().has(key), false);

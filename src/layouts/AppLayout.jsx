@@ -4,6 +4,7 @@ import LoadError from '../components/LoadError';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ChatPanel from '../components/ChatPanel';
+import MobileNavigation from '../components/MobileNavigation';
 import { getAppPageByPath } from '../config/navigation';
 import { useAppData } from '../context/AppDataContext';
 import { CloseIcon } from '../components/icons';
@@ -28,6 +29,7 @@ export default function AppLayout() {
         </main>
       </div>
       <ChatPanel />
+      <MobileNavigation />
     </div>
   );
 }

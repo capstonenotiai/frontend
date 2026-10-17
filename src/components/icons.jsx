@@ -16,6 +16,7 @@ export function ExternalLinkIcon() {
 }
 
 const NAV_ICONS = {
+  more: <path d="M2 8h1M7.5 8h1M13 8h1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />,
   home: <path d="M2 7L8 2l6 5v7h-4V9H6v5H2V7Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />,
   spark: <path d="m8 1 2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />,
   flag: <path d="M3 15V2c3-2 7 2 10 0v7c-3 2-7-2-10 0" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />,

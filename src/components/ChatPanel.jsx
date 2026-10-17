@@ -5,6 +5,8 @@ import * as plannerService from '../services/plannerService';
 import RichText from './RichText';
 import { CloseIcon } from './icons';
 import '../styles/chat.css';
+import useMobile from '../hooks/useMobile';
+import useModalFocus from '../hooks/useModalFocus';
 
 /** AppLayout에 계속 마운트해 화면 이동·창 닫기에도 대화를 보관한다. */
 export default function ChatPanel() {
@@ -18,6 +20,8 @@ export default function ChatPanel() {
   const inputRef = useRef(null);
   const panelRef = useRef(null);
   const listRef = useRef(null);
+  const mobile = useMobile();
+  useModalFocus(open && mobile, panelRef, fabRef);
   const busy = useRef(false);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -60,7 +64,7 @@ export default function ChatPanel() {
     requestReply(text, history);
   };
   return <div className="app-chat">
-    <section className="chat-window" id="app-chat-window" ref={panelRef} hidden={!open} role="dialog" aria-labelledby="app-chat-title">
+    <section className="chat-window" id="app-chat-window" ref={panelRef} hidden={!open} role="dialog" aria-modal={open && mobile ? true : undefined} aria-labelledby="app-chat-title">
       <header className="chat-header"><h2 id="app-chat-title">내 일정에 대해 묻기</h2><button type="button" aria-label="채팅 닫기" onClick={close}><CloseIcon /></button></header>
       <div className="chat-messages" ref={listRef} role="log" aria-live="polite" aria-relevant="additions text">
         {messages.map((message) => <div key={message.id} className={`chat-message ${message.role}`}>{message.role === 'user' ? <span className="sr-only">나: </span> : <span className="chat-speaker">NotiAI</span>}<RichText paragraphs={message.content} /></div>)}
