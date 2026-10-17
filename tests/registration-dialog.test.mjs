@@ -45,6 +45,7 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
     import { createRoot } from 'react-dom/client';
     import { AppDataProvider, useAppData } from '/src/context/AppDataContext.jsx';
     import RegisterConfirmDialog from '/src/components/RegisterConfirmDialog.jsx';
+    import EventRow from '/src/components/events/EventRow.jsx';
     import '/__r05-services.js';
     function Background({ children }) { return React.createElement('main', { id: 'main' },
       React.createElement('h1', null, '배경 화면'), React.createElement('input', { 'aria-label': '배경 입력' }), children); }
@@ -57,11 +58,13 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
         window.__r05DirectCalls ||= []; window.__r05DirectCalls.push(changes);
         const ok = window.__r05HoldConfirm ? await new Promise(resolve => { window.__r05FinishConfirm = resolve; }) : true;
         if (window.__r05ThrowConfirm) throw new Error('등록 오류');
-        if (ok && !window.__r05KeepOpen) setRequest(null);
+        if (ok && !window.__r05KeepOpen) { if (window.__r09ReplaceTrigger) setGone(true); setRequest(null); }
         return ok;
       };
       return React.createElement(React.Fragment, null, React.createElement(Background, null,
-        !gone && React.createElement('button', { ref: triggerRef, onClick: () => open(false) }, '직접 등록'),
+        React.createElement('div', { className: 'event-item' },
+          !gone ? React.createElement('button', { key: 'register', 'data-registration-focus': 'direct', ref: triggerRef, onClick: () => open(false) }, '직접 등록')
+            : window.__r09ReplaceTrigger && React.createElement('button', { key: 'unregister', 'data-registration-focus': 'direct' }, '등록 해제')),
         React.createElement('button', { onClick: () => open(true) }, '직접 수정')),
         request && React.createElement(RegisterConfirmDialog, { request, busy, triggerRef, onCancel: () => { window.__r05Cancels = (window.__r05Cancels || 0) + 1; setRequest(null); }, onConfirm: confirm }));
     }
@@ -73,6 +76,7 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
         React.createElement('button', { disabled: app.actionBusy || app.status !== 'ready', onClick: () => app.requestRegistration('a', false, true) }, '일정 수정'),
         React.createElement('button', { disabled: app.actionBusy || app.status !== 'ready', onClick: () => app.requestRegistration('a3', true) }, '면접 등록'),
         React.createElement('button', { disabled: app.actionBusy || app.status !== 'ready', onClick: app.registerAll }, '전체 등록'),
+        app.events.find(e => e.id === 'a') && React.createElement(EventRow, { event: app.events.find(e => e.id === 'a'), open: true, onToggle() {} }),
         app.actionError && React.createElement('p', { role: 'alert' }, app.actionError.message));
     }
     const direct = new URLSearchParams(location.search).has('direct');
@@ -211,6 +215,7 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
       await page.getByRole('textbox', { name: '장소', exact: true }).first().fill('이전 값'); await page.getByRole('checkbox').check();
       await page.getByRole('button', { name: '확인하고 등록' }).click();
       await page.evaluate(() => window.__r05SetRequest({ id: 'b', interview: false })); await loaded();
+      await page.waitForFunction(() => document.querySelector('.confirm-dialog legend')?.textContent === '접수 · b 공지');
       assert.equal(await page.getByRole('checkbox').isChecked(), false); assert.equal(await page.getByRole('textbox', { name: '장소', exact: true }).inputValue(), '원래 장소');
       await page.evaluate(() => window.__r05FinishConfirm(false)); await delay(100);
       assert.equal(await page.getByRole('alert').count(), 0); await inside();
@@ -239,6 +244,34 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
       assert.equal(await page.getByRole('button', { name: '묶음 등록', exact: true }).evaluate(e => document.activeElement === e), true);
       assert.deepEqual(await page.evaluate(() => window.__r05Writes), [{ id: 'a', overrides: { a: { location: '묶음 장소' } }, confirmed: true, interview: false }]);
       assert.deepEqual(await page.evaluate(() => window.__r05Remote.filter(e => e.registered).map(e => e.id)), ['a', 'a2']);
+    }, false);
+    await run('실제 공지 줄의 등록 버튼이 교체되면 같은 줄의 등록 해제로 포커스를 복원한다', async ({ page, open, loaded, close }) => {
+      const trigger = page.getByRole('button', { name: '일정 등록', exact: true });
+      await trigger.waitFor();
+      await trigger.evaluate(node => { window.__r09Origin = node; });
+      await open('일정 등록'); await loaded();
+      await page.getByRole('checkbox').check();
+      await page.getByRole('button', { name: '확인하고 등록' }).click(); await close();
+      await page.waitForFunction(() => document.activeElement?.textContent === '등록 해제');
+      assert.equal(await page.locator('.event-item').getByRole('button', { name: '등록 해제', exact: true }).evaluate(node => document.activeElement === node), true);
+    }, false);
+    await run('등록 성공으로 열기 DOM 버튼이 사라져도 같은 공지 줄의 교체 버튼으로 복원한다', async ({ page, open, loaded, close }) => {
+      await page.evaluate(() => { window.__r09ReplaceTrigger = true; });
+      await page.getByRole('button', { name: '직접 등록', exact: true }).evaluate(node => { window.__r09Origin = node; });
+      await open(); await loaded(); await page.getByRole('checkbox').check();
+      await page.getByRole('button', { name: '확인하고 등록' }).click(); await close();
+      await page.waitForFunction(() => document.activeElement?.textContent === '등록 해제');
+      assert.equal(await page.evaluate(() => window.__r09Origin.isConnected), false);
+    });
+    await run('실제 등록 성공 후 busy가 해제된 원래 열기 버튼으로 포커스를 복원한다', async ({ page, open, loaded, close }) => {
+      await page.evaluate(() => { window.__r05HoldWrite = true; });
+      await open(); await loaded(); await page.getByRole('checkbox').check();
+      await page.getByRole('button', { name: '확인하고 등록' }).click();
+      await page.waitForFunction(() => window.__r05FinishWrite);
+      assert.equal(await page.locator('main').getByRole('button', { name: '묶음 등록', exact: true, includeHidden: true }).isDisabled(), true);
+      await page.evaluate(() => window.__r05FinishWrite()); await close();
+      await page.waitForFunction(() => document.activeElement?.textContent === '묶음 등록');
+      assert.equal(await page.getByRole('button', { name: '묶음 등록', exact: true }).isEnabled(), true);
     }, false);
     await run('실제 면접 등록은 선택한 면접만 보내고 등록 실패 후 재시도할 수 있다', async ({ page, open, loaded, close }) => {
       await page.evaluate(() => { window.__r05FailWrite = true; }); await open('면접 등록'); await loaded();

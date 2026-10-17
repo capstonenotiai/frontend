@@ -69,7 +69,7 @@ export function PlannerResults({ mode, data, events }) {
     {(items.length > 0 || grouping.length > 0) && <section className="planner-list" aria-label="추천 목록">
       {main.map(renderItem)}
       {minor.length > 0 && <><button type="button" className="planner-fold" aria-expanded={minorOpen} aria-controls="planner-minor" onClick={() => { setMinorOpen(!minorOpen); setOpen(null); }}><span className={`planner-chevron ${minorOpen ? 'is-open' : ''}`}><ChevronIcon /></span>{plannerLabel(mode, minorValue)} {minor.length}건</button>{minorOpen && <div id="planner-minor">{minor.map(renderItem)}</div>}</>}
-      {grouping.length > 0 && <><button type="button" className="planner-fold" aria-expanded={groupOpen} aria-controls="planner-grouping" onClick={() => setGroupOpen(!groupOpen)}><span className={`planner-chevron ${groupOpen ? 'is-open' : ''}`}><ChevronIcon /></span>같은 공지인지 확인이 필요한 항목 {grouping.length}건</button>{groupOpen && <div id="planner-grouping">{grouping.map((item, index) => <div className="planner-group-item" key={item.opportunity_id ?? index}><strong>{item.title}</strong>{item.reason && <p>{item.reason}</p>}</div>)}</div>}</>}
+      {grouping.length > 0 && <><button type="button" className="planner-fold" aria-expanded={groupOpen} aria-controls="planner-grouping" onClick={() => setGroupOpen(!groupOpen)}><span className={`planner-chevron ${groupOpen ? 'is-open' : ''}`}><ChevronIcon /></span>원문에서 일정 구성을 확인할 공지 {grouping.length}건</button>{groupOpen && <div id="planner-grouping">{grouping.map((item, index) => <div className="planner-group-item" key={item.opportunity_id ?? index}><strong>{item.title}</strong>{item.reason && <p>{item.reason}</p>}</div>)}</div>}</>}
     </section>}
   </>;
 }

@@ -16,12 +16,16 @@ export default function RegisterConfirmDialog({ request, busy, onCancel, onConfi
   const [submitting, setSubmitting] = useState(false);
   const backdrop = useRef(null), panel = useRef(null), title = useRef(null);
   const activeRequest = useRef(request), submission = useRef(null);
+  const restoreFrame = useRef(null);
   const actions = useRef({ busy, onCancel });
   const titleId = useId(), descriptionId = useId();
   const blocked = busy || submitting;
   useLayoutEffect(() => { actions.current = { busy: blocked, onCancel }; });
   useLayoutEffect(() => {
+    cancelAnimationFrame(restoreFrame.current);
     const origin = triggerRef?.current || document.activeElement;
+    const originRow = origin?.closest('.event-item');
+    const focusKey = origin?.getAttribute('data-registration-focus');
     const background = new Map();
     const isolate = () => {
       for (const node of document.body.children) {
@@ -63,17 +67,26 @@ export default function RegisterConfirmDialog({ request, busy, onCancel, onConfi
           if (value === null) node.removeAttribute(name); else node.setAttribute(name, value);
         }
       }
-      if (origin?.isConnected && !origin.matches(':disabled') && !origin.closest('[inert], [hidden], [aria-hidden="true"]')
-        && origin.getClientRects().length) {
-        origin.focus({ preventScroll: true });
-        if (document.activeElement === origin && origin !== document.body) return;
-      }
-      const fallback = document.querySelector('main, [role="main"]') || document.body;
-      if (!fallback.hasAttribute('tabindex')) {
-        fallback.setAttribute('tabindex', '-1');
-        fallback.addEventListener('blur', () => fallback.removeAttribute('tabindex'), { once: true });
-      }
-      fallback.focus({ preventScroll: true });
+      // 성공 시 같은 커밋에서 버튼의 disabled/등록 상태도 바뀐다. DOM 갱신 뒤 복원한다.
+      const restoreFocus = (useFallback = false) => {
+        const replacement = focusKey && [...(originRow?.querySelectorAll('[data-registration-focus]') || [])]
+          .find(node => node.getAttribute('data-registration-focus') === focusKey);
+        const target = replacement || origin;
+        if (target?.isConnected && !target.matches(':disabled') && !target.closest('[inert], [hidden], [aria-hidden="true"]')
+          && target.getClientRects().length) {
+          target.focus({ preventScroll: true });
+          if (document.activeElement === target && target !== document.body) return;
+        }
+        if (!useFallback) return;
+        const fallback = document.querySelector('main, [role="main"]') || document.body;
+        if (!fallback.hasAttribute('tabindex')) {
+          fallback.setAttribute('tabindex', '-1');
+          fallback.addEventListener('blur', () => fallback.removeAttribute('tabindex'), { once: true });
+        }
+        fallback.focus({ preventScroll: true });
+      };
+      restoreFocus();
+      restoreFrame.current = requestAnimationFrame(() => restoreFocus(true));
     };
   }, [triggerRef]);
   useLayoutEffect(() => {

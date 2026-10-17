@@ -12,6 +12,23 @@ const events = [
 ];
 const ids = (items) => items.map(({ id }) => id);
 
+test('전체·저장·숨김 목록은 미마감 먼저, 마감은 최근 종료순으로 두며 입력을 보존한다', () => {
+  const items = [
+    { id: 'old', end_date: '2026-10-10', daysLeft: -8 },
+    { id: 'soon', end_date: '2026-10-20', daysLeft: 2 },
+    { id: 'recent', start_date: '2026-10-17', daysLeft: -1 },
+    { id: 'unknown', daysLeft: null },
+    { id: 'today', end_date: '2026-10-18', daysLeft: 0 },
+    { id: 'later', end_date: '2026-10-25', daysLeft: 7 },
+  ];
+  const expected = ['today', 'soon', 'later', 'unknown', 'recent', 'old'];
+  const before = structuredClone(items);
+  assert.deepEqual(ids(filterNotices(items)), expected);
+  assert.deepEqual(ids(savedList(items.map(item => ({ ...item, bookmarked: true })))), expected);
+  assert.deepEqual(ids(hiddenList(items.map(item => ({ ...item, dismissed: true })))), expected);
+  assert.deepEqual(items, before);
+});
+
 test('분야·출처·제목 검색은 각각 적용되며 공백·대소문자를 무시한다', () => {
   assert.deepEqual(ids(filterNotices(events, { category: 'scholarship' })), ['e', 'a', 'd']);
   assert.deepEqual(ids(filterNotices(events, { source: 'wevity' })), ['b', 'd']);

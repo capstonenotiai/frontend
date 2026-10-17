@@ -53,7 +53,7 @@ export default function NoticeTimeline({ items, currentId, editable = false, sho
             <p className="event-timeline-meta">{formatScheduleWhen(item)}{item.location && ` · ${item.location}`}</p>
           </>}
           {showActions && item.registered && item.id !== event.id && ['needs_sync', 'failed'].includes(item.sync_status) && <p className="event-meta">Google 캘린더에 아직 반영되지 않았어요. <button type="button" className="event-link" disabled={actionBusy} onClick={() => syncEvent(item.id)}>다시 반영</button></p>}
-          {showActions && item.event_type === 'interview' && <><button type="button" className="event-button quiet" disabled={actionBusy || (!item.registered && item.can_register === false)}
+          {showActions && item.event_type === 'interview' && <><button type="button" data-registration-focus={`interview-${item.id}`} className="event-button quiet" disabled={actionBusy || (!item.registered && item.can_register === false)}
             onClick={() => item.registered ? removeRegistration(item, true) : requestRegistration(item.id, true)}>{item.registered ? '따로 추가 해제' : '캘린더에 따로 추가'}</button>
             {!item.registered && item.can_register === false && <p className="event-meta">{item.registration_reason}</p>}</>}
         </div>

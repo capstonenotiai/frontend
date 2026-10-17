@@ -83,5 +83,6 @@ export function buildMockRecommendations(mode, events, now = new Date()) {
       ? { ...item, grade: ['strong_match', 'potential_match', 'strong_match', 'not_recommended', 'potential_match', 'not_recommended'][index], check_reasons: ['학년과 팀 참가 조건을 확인해 주세요.'] }
       : { ...item, tier: index < 3 ? 'core' : 'secondary', secondary_reason: index < 3 ? null : ['stronger_alternative', 'schedule_conflict', 'information_uncertain'][index - 3], chosen_over: [], conflicts_with: [] });
   return { mode, generated_at: now.toISOString(), items,
-    needs_grouping_check: common.slice(0, 1).map(({ opportunity_id, title }) => ({ opportunity_id, title })), corrections: [] };
+    needs_grouping_check: common.slice(0, 1).map(({ opportunity_id, title }) => ({ opportunity_id, title,
+      reason: '여러 활동이 함께 안내되어 있어 원문에서 일정 구성을 확인해 주세요.' })), corrections: [] };
 }

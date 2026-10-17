@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const visibleIds = new Set([...layout.bars.map((bar) => bar.id), ...Object.values(layout.chips).flat()]);
   const selected = registered.find((event) => event.id === selectedId && visibleIds.has(event.id));
   const byId = new Map(registered.map((event) => [event.id, event]));
-  const newEvents = events.filter((event) => event.is_new && !event.dismissed).sort(compareByDeadline);
+  const newEvents = events.filter((event) => event.is_new && !event.dismissed && !(event.daysLeft < 0)).sort(compareByDeadline);
   const loading = status === 'loading' && !events.length && !calendarEvents.length;
   const pick = (id) => setSelectedId((previous) => previous === id ? null : id);
   const shift = (next) => { setOffset(next); setSelectedId(null); setExpandedDays({}); };

@@ -56,7 +56,7 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
     const data = { mode: 'focus', generated_at: new Date().toISOString(), items: [{ opportunity_id: 'o1', title: '핵심 공지', tier: 'core', reason: '먼저 볼 이유', focus_event_id: 'a', days_until_deadline: 3 }, { opportunity_id: 'o2', title: '접힌 공지', tier: 'secondary', reason: '미룰 이유', secondary_reason: 'schedule_conflict' }], needs_grouping_check: [{ opportunity_id: 'o3', title: '묶음 확인 공지' }], corrections: ['internal_correction'] };
     writePlannerCache(storage, 'focus', 'fixture', data, JSON.stringify([globalThis.__plannerUser.plannerUserKey, globalThis.__plannerApp.plannerEventKey]));
     const restored = render(Planner, {}, '/planner?mode=focus');
-    assert.match(restored, /핵심 공지/); assert.match(restored, /후순위 1건/); assert.match(restored, /같은 공지인지 확인이 필요한 항목 1건/);
+    assert.match(restored, /핵심 공지/); assert.match(restored, /후순위 1건/); assert.match(restored, /원문에서 일정 구성을 확인할 공지 1건/);
     assert.doesNotMatch(restored, /접힌 공지|묶음 확인 공지|internal_correction|planner-placeholder/);
     assert.match(restored, /aria-expanded="false"/); assert.match(restored, />새로 받기</); assert.match(restored, /30분 동안 저장/);
     assert.equal((render(PlannerLoading).match(/class="planner-placeholder"/g) || []).length, 3);
@@ -87,6 +87,7 @@ test('플래너 mock: 세 API 응답의 앱 ID·접힌 항목·묶음 확인과 
     for (const mode of ['priority', 'discover', 'focus']) {
       const data = buildMockRecommendations(mode, mockStore.events);
       assert.equal(data.mode, mode); assert.ok(data.needs_grouping_check.length > 0);
+      assert.ok(data.needs_grouping_check.every(item => item.reason.includes('원문에서 일정 구성')));
       assert.ok(data.items.every((item) => mockStore.events.some((event) => event.id === item.focus_event_id)));
       if (mode === 'discover') assert.ok(data.items.some((item) => item.grade === 'not_recommended'));
       if (mode === 'focus') assert.deepEqual(data.items.filter((item) => item.tier === 'secondary').map((item) => item.secondary_reason), ['stronger_alternative', 'schedule_conflict', 'information_uncertain']);
