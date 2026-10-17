@@ -49,7 +49,7 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/curation" element={<Navigate to="/dashboard" replace />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/admin/review" element={<AdminReviewPage />} />
+          <Route path="/admin/review/:id?" element={<AdminReviewPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
