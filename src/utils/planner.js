@@ -6,7 +6,7 @@ export const PLANNER_LABELS = {
 export const SECONDARY_LABELS = { stronger_alternative: '더 적합한 대안', schedule_conflict: '일정 충돌', information_uncertain: '정보 확인 필요' };
 export const LABEL_FIELDS = { priority: 'next_step_label', discover: 'grade', focus: 'tier' };
 export const CACHE_TTL = 30 * 60 * 1000;
-export const CHAT_GREETING = '다가오는 일정에 대해 물어보세요. 마감 전 일정 20건을 보고 답해요.';
+export const CHAT_GREETING = '안녕하세요, NotiAI예요. 마감이 다가오는 공지나 내 일정을 물어보세요.';
 export function plannerLabel(mode, value) { return Object.hasOwn(PLANNER_LABELS, mode) && Object.hasOwn(PLANNER_LABELS[mode], value) ? PLANNER_LABELS[mode][value] : ''; }
 export function secondaryLabel(value) { return Object.hasOwn(SECONDARY_LABELS, value) ? SECONDARY_LABELS[value] : ''; }
 export function countPlannerLabels(mode, items = []) {

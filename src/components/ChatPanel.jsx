@@ -63,11 +63,11 @@ export default function ChatPanel() {
     <section className="chat-window" id="app-chat-window" ref={panelRef} hidden={!open} role="dialog" aria-labelledby="app-chat-title">
       <header className="chat-header"><h2 id="app-chat-title">내 일정에 대해 묻기</h2><button type="button" aria-label="채팅 닫기" onClick={close}><CloseIcon /></button></header>
       <div className="chat-messages" ref={listRef} role="log" aria-live="polite" aria-relevant="additions text">
-        {messages.map((message) => <div key={message.id} className={`chat-message ${message.role}`}><span className="sr-only">{message.role === 'user' ? '나' : 'AI'}: </span><RichText paragraphs={message.content} /></div>)}
+        {messages.map((message) => <div key={message.id} className={`chat-message ${message.role}`}>{message.role === 'user' ? <span className="sr-only">나: </span> : <span className="chat-speaker">NotiAI</span>}<RichText paragraphs={message.content} /></div>)}
         {sending && <div className="chat-wait" role="status"><span className="sr-only">답변을 작성하고 있어요.</span><svg width="40" height="16" viewBox="0 0 40 16" aria-hidden="true">{[8, 20, 32].map((x, index) => <circle key={x} cx={x} cy="8" r="2" fill="currentColor" style={{ animationDelay: `${index * 150}ms` }} />)}</svg></div>}
       </div>
       {error && <div className="chat-error" role="alert"><span>{error.message}</span><button type="button" disabled={sending} onClick={() => requestReply(error.text, error.history)}>다시 보내기</button></div>}
-      <form className="chat-form" onSubmit={submit}><input ref={inputRef} type="text" maxLength={3000} value={input} disabled={sending} onChange={(event) => setInput(event.target.value)} placeholder="다가오는 일정에 대해 물어보세요" aria-label="채팅 메시지" /><button type="submit" disabled={sending || !input.trim()}>보내기</button></form>
+      <form className="chat-form" onSubmit={submit}><input ref={inputRef} type="text" maxLength={3000} value={input} disabled={sending} onChange={(event) => setInput(event.target.value)} placeholder="예: 이번 주 마감인 공모전 알려 줘" aria-label="채팅 메시지" /><button type="submit" disabled={sending || !input.trim()}>보내기</button></form>
     </section>
     <button type="button" className="chat-fab" ref={fabRef} aria-label={open ? '채팅 닫기' : '채팅 열기'} aria-expanded={open} aria-controls="app-chat-window" onClick={() => open ? close() : setOpen(true)}>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11a8 8 0 0 1-8 8H5l-3 3V11a9 9 0 0 1 18 0Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 10h8m-8 4h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>

@@ -66,7 +66,7 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
     const { default: Chat } = await server.ssrLoadModule('/src/components/ChatPanel.jsx');
     const chat = render(Chat);
     assert.match(chat, /채팅 열기/); assert.match(chat, /hidden="" role="dialog"/); assert.match(chat, /내 일정에 대해 묻기/);
-    assert.match(chat, /마감 전 일정 20건/); assert.doesNotMatch(chat, /Study|Explorer|Balanced|GPT-4/);
+    assert.match(chat, /NotiAI예요/); assert.match(chat, /class="chat-speaker">NotiAI/); assert.doesNotMatch(chat, /Study|Explorer|Balanced|GPT-4/);
     const { default: Layout } = await server.ssrLoadModule('/src/layouts/AppLayout.jsx');
     for (const url of ['/dashboard', '/schedules', '/schedules/saved', '/schedules/hidden', '/planner', '/calendar', '/settings', '/feedback', '/admin/review']) assert.match(render(Layout, {}, url), /aria-label="채팅 열기"/);
     const { default: Settings } = await server.ssrLoadModule('/src/pages/SettingsPage.jsx');
