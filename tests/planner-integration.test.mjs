@@ -102,6 +102,11 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
     assert.match(restored, /aria-expanded="false"/); assert.match(restored, />새로 받기</); assert.match(restored, /30분 동안 저장/);
     assert.equal((render(PlannerLoading).match(/class="planner-placeholder"/g) || []).length, 3);
     assert.match(render(PlannerLoading), /role="status"/);
+    // C안: 첫 단계 문구·진행 막대·안내 문구. 바뀌는 문구는 화면 낭독기에서 숨긴다.
+    const loading = render(PlannerLoading);
+    assert.match(loading, /내 일정을 확인하고 있어요…/); assert.match(loading, /class="planner-bar"/);
+    assert.match(loading, /<div class="planner-progress" aria-hidden="true">/);
+    assert.match(loading, /처음 추천은 시간이 조금 걸려요/); assert.doesNotMatch(loading, /20초/);
     assert.match(render(PlannerError, { error: { status: 502 }, onRetry() {} }), /AI 응답을 받지 못했어요/);
     assert.match(render(PlannerResults, { mode: 'discover', data: { items: [] }, events: [] }), /전체 공지 보기/);
     const { default: Chat } = await server.ssrLoadModule('/src/components/ChatPanel.jsx');

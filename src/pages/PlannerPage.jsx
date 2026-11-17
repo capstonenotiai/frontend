@@ -24,8 +24,26 @@ function SummarySentence({ mode, data }) {
     return part;
   })}</p>;
 }
+// 실제 처리 단계가 아니라 시간에 따라 바뀌는 안내 문구다. 마지막 문구에서 멈춘다.
+export const PLANNER_LOADING_STEPS = ['내 일정을 확인하고 있어요', '새 공지를 살펴보고 있어요', '마감과 지원 조건을 비교하고 있어요', '추천을 정리하고 있어요'];
+const PLANNER_STEP_MS = 2500;
 export function PlannerLoading() {
-  return <div className="planner-loading" aria-busy="true"><p role="status">공지를 살펴보고 있어요. 처음 추천은 시간이 조금 걸려요.</p>{[1, 2, 3].map((key) => <div key={key} className="planner-placeholder" aria-hidden="true"><span /><span /><span /></div>)}</div>;
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    if (step >= PLANNER_LOADING_STEPS.length - 1) return undefined;
+    const timer = setTimeout(() => setStep((value) => value + 1), PLANNER_STEP_MS);
+    return () => clearTimeout(timer);
+  }, [step]);
+  return <div className="planner-loading" aria-busy="true">
+    {/* 화면 낭독기에는 고정 문구 한 번만 알리고, 바뀌는 단계 문구는 화면에만 보인다. */}
+    <p role="status" className="sr-only">AI 추천을 준비하고 있어요. 처음 추천은 시간이 조금 걸려요.</p>
+    <div className="planner-progress" aria-hidden="true">
+      <p className="planner-step" key={step}>{PLANNER_LOADING_STEPS[step]}…</p>
+      <div className="planner-bar"><span /></div>
+      <p className="planner-hint">처음 추천은 시간이 조금 걸려요.</p>
+    </div>
+    {[1, 2, 3].map((key) => <div key={key} className="planner-placeholder" aria-hidden="true"><span /><span /><span /></div>)}
+  </div>;
 }
 export function PlannerRefresh({ loading, notice, onRefresh }) {
   return <><button type="button" className="planner-refresh" disabled={loading || Boolean(notice)} onClick={onRefresh}>새로 받기</button>{notice && <span className="planner-limit" role="status">{notice}</span>}</>;
