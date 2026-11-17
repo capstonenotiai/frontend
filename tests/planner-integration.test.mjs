@@ -102,10 +102,11 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
       needs_grouping_check: [{ opportunity_id: 'o3', title: '묶음 확인 공지' }], corrections: ['internal_correction'] };
     writePlannerCache(storage, 'focus', 'fixture', data, JSON.stringify([globalThis.__plannerUser.plannerUserKey, globalThis.__plannerApp.plannerEventKey]));
     const restored = render(Planner, {}, '/planner?mode=focus');
-    assert.match(restored, /겹치거나 비슷한 일정 <strong>1묶음<\/strong>을 비교했어요/); assert.match(restored, /시간 겹침/);
-    assert.match(restored, /핵심 공지/); assert.match(restored, /겹친 공지/); assert.match(restored, /11\/18\(수\) 10:00~17:00/);
-    assert.match(restored, /멘토링/); assert.match(restored, /확인 필요/); assert.match(restored, /→ 핵심 공지에 집중해요\./);
-    assert.match(restored, /비교하지 않았어요/); assert.doesNotMatch(restored, /원문에서 일정 구성을 확인할 공지/);
+    // 묶음은 목록 한 줄 (고른 일정·배지·이유·대신 미룬 일정), 비교표는 펼쳤을 때만. 비교 안 한 일정은 회색 접기 줄.
+    assert.match(restored, /겹치거나 비슷한 일정 <strong>1묶음<\/strong>을 비교했어요/); assert.match(restored, /planner-badge">시간 겹침/);
+    assert.match(restored, /핵심 공지/); assert.match(restored, /먼저 볼 이유/); assert.match(restored, /대신 미뤄요: 겹친 공지/);
+    assert.doesNotMatch(restored, /focus-table/); assert.match(restored, /planner-fold[^>]*>.*겹치거나 비슷한 일정이 없는 1건/);
+    assert.doesNotMatch(restored, /원문에서 일정 구성을 확인할 공지|planner-excluded/);
     assert.doesNotMatch(restored, /혼자인 공지|묶음 확인 공지|internal_correction|planner-placeholder/);
     assert.match(restored, /aria-expanded="false"/); assert.match(restored, />새로 받기</); assert.match(restored, /30분 동안 저장/);
     assert.equal((render(PlannerLoading).match(/class="planner-placeholder"/g) || []).length, 3);
