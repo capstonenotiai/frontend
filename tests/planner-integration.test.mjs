@@ -33,6 +33,47 @@ test('플래너·채팅: 실제 API 요청 계약과 오류 상태를 네트워�
   } finally { globalThis.fetch = originalFetch; await server.close(); }
 });
 
+test('채팅 스트리밍: 잘린 SSE 조각을 이어 붙이고 오류·끊김·구버전 서버를 처리한다', async () => {
+  const server = await createServer({ configFile: false, envDir: false, server: { middlewareMode: true, ws: false },
+    define: { 'import.meta.env.VITE_USE_MOCK': '"false"', 'import.meta.env.VITE_PLANNER_USE_MOCK': '"false"', 'import.meta.env.VITE_API_BASE_URL': '""' }, optimizeDeps: { noDiscovery: true, include: [] } });
+  const originalFetch = globalThis.fetch;
+  const sse = (chunks) => new Response(new ReadableStream({ start(controller) {
+    const encoder = new TextEncoder(); chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk))); controller.close();
+  } }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  const requests = [];
+  try {
+    const service = await server.ssrLoadModule('/src/services/plannerService.js');
+    const ev = (event, data) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    const body = ev('delta', { text: '이번 주 ' }) + ev('delta', { text: '마감은\n\n2건' }) + ev('done', { reply: '이번 주 마감은\n\n2건이에요.' });
+    // 이벤트 경계와 한글 바이트 중간에서 잘라 보낸다.
+    const bytes = new TextEncoder().encode(body);
+    globalThis.fetch = async (url, options) => { requests.push({ url, ...options, body: JSON.parse(options.body) });
+      return new Response(new ReadableStream({ start(c) { for (let i = 0; i < bytes.length; i += 7) c.enqueue(bytes.slice(i, i + 7)); c.close(); } }),
+        { status: 200, headers: { 'content-type': 'text/event-stream; charset=utf-8' } }); };
+    const partials = [];
+    const history = Array.from({ length: 20 }, (_, index) => service.createMessage(index % 2 ? 'assistant' : 'user', `과거 ${index}`));
+    const reply = await service.streamMessage({ message: '질문', history, onDelta: (text) => partials.push(text) });
+    assert.deepEqual(partials, ['이번 주 ', '이번 주 마감은\n\n2건']);
+    assert.deepEqual(reply.content, ['이번 주 마감은', '2건이에요.']);
+    assert.equal(requests[0].url, '/api/planner/chat/stream'); assert.equal(requests[0].credentials, 'include');
+    assert.equal(requests[0].body.message, '질문'); assert.equal(requests[0].body.history.length, 12);
+
+    globalThis.fetch = async () => sse([ev('delta', { text: '일부' }), ev('error', { message: '요청이 많아요', status: 503 })]);
+    await assert.rejects(service.streamMessage({ message: 'x' }), (error) => error.status === 503 && error.message === '요청이 많아요');
+    globalThis.fetch = async () => sse([ev('delta', { text: '끊긴 답' })]);
+    await assert.rejects(service.streamMessage({ message: 'x' }), (error) => error.status === 502);
+    globalThis.fetch = async () => new Response(JSON.stringify({ message: '검증 오류' }), { status: 400, headers: { 'content-type': 'application/json' } });
+    await assert.rejects(service.streamMessage({ message: 'x' }), (error) => error.status === 400 && error.message === '검증 오류');
+
+    // 스트리밍 경로가 없는 이전 서버는 기존 /chat 으로 대신한다.
+    const urls = [];
+    globalThis.fetch = async (url) => { urls.push(url); return url.endsWith('/stream') ? new Response('', { status: 404 })
+      : new Response(JSON.stringify({ reply: '기존 답변' }), { status: 200, headers: { 'content-type': 'application/json' } }); };
+    assert.deepEqual((await service.streamMessage({ message: 'x' })).content, ['기존 답변']);
+    assert.deepEqual(urls, ['/api/planner/chat/stream', '/api/planner/chat']);
+  } finally { globalThis.fetch = originalFetch; await server.close(); }
+});
+
 test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접힌 묶음·빈 상태·오류·공통 레이아웃', async () => {
   const server = await createServer({ configFile: false, envDir: false, plugins: [{ name: 'planner-fixture', enforce: 'pre', load(id) {
     const path = id.replaceAll('\\', '/');
