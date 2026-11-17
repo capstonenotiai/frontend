@@ -75,7 +75,7 @@ export function PlannerResults({ mode, data, events }) {
         <span className="planner-rec-body"><span className="planner-rec-title"><strong>{item.title}</strong>{label && <span className="planner-badge">{label}</span>}{secondary && <span className="planner-badge grey">{secondary}</span>}{Number.isFinite(days) && <span className={`planner-dday ${days <= 7 ? 'hot' : ''}`}>{days < 0 ? `D+${Math.abs(days)}` : days === 0 ? 'D-day' : `D-${days}`}</span>}</span>
           <span className="planner-why">{item.reason}</span>
           {mode === 'priority' && item.next_action && <span className="planner-next"><b>다음 행동</b> {item.next_action}</span>}
-          {mode === 'discover' && item.check_reasons?.length > 0 && <span className="planner-why">확인할 조건: {item.check_reasons.join(', ')}</span>}
+          {mode === 'discover' && item.check_reasons?.length > 0 && <span className="planner-why">확인할 조건: {item.check_reasons.map((reason) => String(reason).replace(/[.\s]+$/, '')).join(' · ')}</span>}
         </span><span className={`planner-chevron ${expanded ? 'is-open' : ''}`}><ChevronIcon /></span>
       </button>
       {expanded && <div id={`planner-detail-${index}`}>{event ? <EventExpand event={event} /> : <div className="planner-source">{item.source_url ? <a href={item.source_url} target="_blank" rel="noreferrer">원문 보기 <ExternalLinkIcon /></a> : <p>원문 링크가 없어요.</p>}</div>}</div>}
