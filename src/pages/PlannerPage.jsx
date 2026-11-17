@@ -25,7 +25,7 @@ function SummarySentence({ mode, data }) {
   })}</p>;
 }
 export function PlannerLoading() {
-  return <div className="planner-loading" aria-busy="true"><p role="status">공지를 살펴보고 있어요. 20초쯤 걸려요.</p>{[1, 2, 3].map((key) => <div key={key} className="planner-placeholder" aria-hidden="true"><span /><span /><span /></div>)}</div>;
+  return <div className="planner-loading" aria-busy="true"><p role="status">공지를 살펴보고 있어요. 처음 추천은 시간이 조금 걸려요.</p>{[1, 2, 3].map((key) => <div key={key} className="planner-placeholder" aria-hidden="true"><span /><span /><span /></div>)}</div>;
 }
 export function PlannerRefresh({ loading, notice, onRefresh }) {
   return <><button type="button" className="planner-refresh" disabled={loading || Boolean(notice)} onClick={onRefresh}>새로 받기</button>{notice && <span className="planner-limit" role="status">{notice}</span>}</>;
@@ -157,7 +157,7 @@ export default function PlannerPage() {
       <header className="planner-intro"><h1>어떤 도움이 필요한가요?</h1><p>내 일정과 프로필을 보고 정리해 드려요.</p></header>
       <div className="planner-input-info"><span>추천에 쓰는 정보: 내 일정 {mine}건 · 새 공지 {fresh}건 · {profileText} · 관심분야 {interests}</span><Link to="/settings">설정에서 바꾸기</Link></div>
       <div className="planner-modes">{AI_MODES.map((entry) => <button type="button" key={entry.id} className="planner-mode" onClick={() => choose(entry.id)}><strong>{entry.name}</strong><span className="planner-question">{entry.question}</span><ul>{entry.criteria.map((line) => <li key={line}>{line}</li>)}</ul><span className="planner-mode-labels">{entry.labels.map((label) => <span className="planner-badge" key={label}>{label}</span>)}</span><span className="planner-go">추천 받기 <Arrow /></span></button>)}</div>
-      <p className="planner-fine">날짜와 지원 조건은 NotiAI가 공지에서 직접 정리하고, AI는 그 내용만 보고 판단해요. 처음 추천은 20초쯤 걸리고 30분 동안 저장돼요.</p>
+      <p className="planner-fine">날짜와 지원 조건은 NotiAI가 공지에서 직접 정리하고, AI는 그 내용만 보고 판단해요. 처음 추천은 시간이 조금 걸리고, 받은 추천은 30분 동안 저장돼요.</p>
     </> : <>
       <div className="planner-toolbar"><div className="planner-segment" aria-label="추천 모드">{AI_MODES.map((entry) => <button type="button" key={entry.id} aria-pressed={mode === entry.id} onClick={() => choose(entry.id)}>{entry.name}</button>)}</div><span className="planner-time">{current.data && recommendationTime(current.data.generated_at)}</span><PlannerRefresh loading={current.status === 'loading'} notice={limitNotice?.mode === mode ? limitNotice.message : ''} onRefresh={reload} /></div>
       {current.status === 'error' ? <PlannerError error={current.error} onRetry={() => { if (current.inputError) { refreshData(); return; } force.current = false; setRefresh(value => value + 1); }} /> : current.data ? <PlannerResults key={`${mode}:${current.data.generated_at}`} mode={mode} data={current.data} events={combined} /> : <PlannerLoading />}

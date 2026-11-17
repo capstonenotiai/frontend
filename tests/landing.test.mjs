@@ -43,7 +43,8 @@ test('랜딩·정책 SSR: 날짜 연결·Google 버튼 세 곳·메뉴·정책 �
     assert.equal((html.match(/class="c"/g) || []).length, 30);
     assert.equal((html.match(/<img /g) || []).length, 3);
     for (const id of ['flow', 'feat', 'sites']) assert.ok(html.includes(`href="#${id}"`) && html.includes(`id="${id}"`));
-    assert.match(html, /href="\/privacy"/); assert.match(html, /href="\/terms"/);
+    // 정책 문서가 준비될 때까지 첫 화면에서는 링크를 노출하지 않는다(주소는 유지).
+    assert.doesNotMatch(html, /href="\/privacy"|href="\/terms"|개인정보처리방침|이용약관/);
     assert.doesNotMatch(html, /예시|데모 보기|새로 받기|통계|logo-slot/);
     const Policy = (await server.ssrLoadModule('/src/pages/PolicyPage.jsx')).default;
     for (const title of ['개인정보처리방침', '이용약관']) {

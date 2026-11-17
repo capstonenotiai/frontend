@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL, GITHUB_URL, USE_MOCK } from '../config/app';
 import { SOURCES } from '../config/sources';
 import { getLoginUrl, nextHighlight, LANDING_SCHEDULES, LANDING_NOTICES, LANDING_MODES } from '../utils/landing';
@@ -171,6 +171,6 @@ export default function LandingPage() {
       })}</div><div className="merge rv"><svg className="lines" viewBox="0 0 900 72" preserveAspectRatio="none" aria-hidden="true"><path className="ln" d="M150 0 C150 48, 450 24, 450 72" /><path className="ln" d="M450 0 L450 72" /><path className="ln" d="M750 0 C750 48, 450 24, 450 72" /></svg><Arrow down className="down" /><div className="to"><span className="chip-lg main">NotiAI가 날짜를 정리</span><Arrow className="merge-arrow" /><span className="chip-lg">내 Google 캘린더</span></div></div></div></section>
       <section className="band"><div className="wrap rv"><h2>놓치는 마감 없이 이번 학기를</h2><p>Google 계정으로 바로 시작해요.</p>{loginButton('btn-band btn-lg')}</div></section>
     </main>
-    <footer className="foot"><div className="wrap"><span className="wordmark">NotiAI</span><nav className="foot-links" aria-label="바닥글"><Link to="/privacy">개인정보처리방침</Link><Link to="/terms">이용약관</Link><a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a></nav><span className="copy">© 2026 NotiAI</span></div></footer>
+    <footer className="foot"><div className="wrap"><span className="wordmark">NotiAI</span><nav className="foot-links" aria-label="바닥글"><a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a></nav><span className="copy">© 2026 NotiAI</span></div></footer>
   </div>;
 }
