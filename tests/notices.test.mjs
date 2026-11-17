@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectionTimeLabel, filterNotices, savedList, hiddenList } from '../src/utils/noticeFilters.js';
+import { collectionTimeLabel, filterNotices, savedList, hiddenList, splitEnded } from '../src/utils/noticeFilters.js';
 import { createServer } from 'vite';
 
 const events = [
@@ -27,6 +27,20 @@ test('전체·저장·숨김 목록은 미마감 먼저, 마감은 최근 종료
   assert.deepEqual(ids(savedList(items.map(item => ({ ...item, bookmarked: true })))), expected);
   assert.deepEqual(ids(hiddenList(items.map(item => ({ ...item, dismissed: true })))), expected);
   assert.deepEqual(items, before);
+});
+
+test('마감된 공지는 별도 목록으로 나누고 정렬 순서를 유지한다(오늘 마감·날짜 미확인은 진행 중)', () => {
+  const items = filterNotices([
+    { id: 'old', end_date: '2026-10-10', daysLeft: -8 },
+    { id: 'today', end_date: '2026-10-18', daysLeft: 0 },
+    { id: 'unknown', daysLeft: null },
+    { id: 'recent', end_date: '2026-10-17', daysLeft: -1 },
+    { id: 'later', end_date: '2026-10-25', daysLeft: 7 },
+  ]);
+  const { active, ended } = splitEnded(items);
+  assert.deepEqual(ids(active), ['today', 'later', 'unknown']);
+  assert.deepEqual(ids(ended), ['recent', 'old']);
+  assert.deepEqual(splitEnded([]), { active: [], ended: [] });
 });
 
 test('분야·출처·제목 검색은 각각 적용되며 공백·대소문자를 무시한다', () => {

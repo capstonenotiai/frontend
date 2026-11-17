@@ -8,7 +8,7 @@ import { SearchIcon, CloseIcon } from '../components/icons';
 import { INTEREST_CATEGORIES } from '../config/interestCategories';
 import { SOURCES } from '../config/sources';
 import { useAppData } from '../context/AppDataContext';
-import { collectionTimeLabel, filterNotices } from '../utils/noticeFilters';
+import { collectionTimeLabel, filterNotices, isEndedNotice, splitEnded } from '../utils/noticeFilters';
 import { getToday } from '../utils/date';
 import { getEventDetail } from '../services/eventService';
 
@@ -37,6 +37,8 @@ export default function SchedulesPage() {
   const category = INTEREST_CATEGORIES.some(({ id }) => id === params.get('cat')) ? params.get('cat') : 'all';
   const source = SOURCES.some(({ id }) => id === params.get('src')) ? params.get('src') : 'all';
   const visible = useMemo(() => filterNotices(events, { category, source, query }), [events, category, source, query]);
+  const { active, ended } = useMemo(() => splitEnded(visible), [visible]);
+  const showEnded = params.get('ended') === '1';
   const collectedAt = collectionTimeLabel(summary?.lastCollectedAt, getToday());
   const cancelSearchTimer = useCallback(() => {
     clearTimeout(search.current.timer);
@@ -153,6 +155,8 @@ export default function SchedulesPage() {
           setQuery('');
           ['cat', 'src', 'q'].forEach((key) => next.delete(key));
         }
+        // 마감된 공지는 접힌 목록에 있으므로 펼친 뒤 포커스를 옮긴다.
+        if (row && isEndedNotice(row)) next.set('ended', '1');
         setNotification({ status: row ? 'ready' : 'detail', id, rowId: row?.id, target, detail });
         setSelectedId(row?.id ?? null);
         setFocusId(row?.id ?? target.id);
@@ -195,8 +199,13 @@ export default function SchedulesPage() {
       && !visible.some((event) => event.id === selectedId)) setSelectedId(null);
   }, [visible, status, selectedId, focusId, params]);
 
+  const renderRow = (event) => <EventRow key={event.id} event={event} mode="new" idPrefix="notices"
+    notificationTargetId={notification?.rowId === event.id ? notification.id : undefined}
+    open={selectedId === event.id} onToggle={() => setSelectedId(selectedId === event.id ? null : event.id)}
+    rowRef={(row) => { if (row) rows.current.set(event.id, row); else rows.current.delete(event.id); }} />;
+
   return <section className="card notices-card">
-    <div className="card-header"><h2 className="card-title">공지 <strong>{visible.length}</strong>건</h2>
+    <div className="card-header"><h2 className="card-title">공지 <strong>{active.length}</strong>건</h2>
       {collectedAt && <span className="notices-description">마지막 수집 {collectedAt}</span>}
     </div>
     <div className="notice-tools">
@@ -244,13 +253,17 @@ export default function SchedulesPage() {
       </div>
     </section>}
     <NoticeListState>
-      <div className="notice-list">{visible.map((event) => <EventRow key={event.id} event={event} mode="new" idPrefix="notices"
-        notificationTargetId={notification?.rowId === event.id ? notification.id : undefined}
-        open={selectedId === event.id} onToggle={() => setSelectedId(selectedId === event.id ? null : event.id)}
-        rowRef={(row) => { if (row) rows.current.set(event.id, row); else rows.current.delete(event.id); }} />)}</div>
-      {!events.length ? <EmptyState>아직 모은 공지가 없어요.</EmptyState> : !visible.length && <EmptyState>
+      <div className="notice-list">{active.map(renderRow)}</div>
+      {!events.length ? <EmptyState>아직 모은 공지가 없어요.</EmptyState> : !visible.length ? <EmptyState>
         조건에 맞는 공지가 없어요. <button type="button" className="event-link" onClick={resetFilters}>필터 초기화</button>
-      </EmptyState>}
+      </EmptyState> : !active.length && <EmptyState>진행 중인 공지가 없어요.</EmptyState>}
+      {ended.length > 0 && <div className="notice-ended">
+        <button type="button" className="notice-ended-toggle" aria-expanded={showEnded} aria-controls="notices-ended-list"
+          onClick={() => updateFilter('ended', showEnded ? null : '1')}>
+          마감된 공지 <strong>{ended.length}</strong>건 <span aria-hidden="true">{showEnded ? '▲' : '▼'}</span>
+        </button>
+        {showEnded && <div id="notices-ended-list" className="notice-list notice-list-ended">{ended.map(renderRow)}</div>}
+      </div>}
     </NoticeListState>
   </section>;
 }

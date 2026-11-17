@@ -14,6 +14,16 @@ export function filterNotices(events, { category = 'all', source = 'all', query 
     && (event.title || '').toLocaleLowerCase().includes(term)).sort(compareNotices);
 }
 
+// 화면의 '마감' 표시와 같은 기준(daysLeft < 0). 날짜 미확인은 마감 전으로 본다.
+export const isEndedNotice = (event) => event.daysLeft < 0;
+
+/** 정렬된 공지를 마감 전/마감으로 나눈다. 순서는 그대로 유지한다. */
+export function splitEnded(events) {
+  const active = [], ended = [];
+  events.forEach((event) => (isEndedNotice(event) ? ended : active).push(event));
+  return { active, ended };
+}
+
 export function savedList(events) {
   return events.filter((event) => event.bookmarked && !event.registered && !event.dismissed).sort(compareNotices);
 }
