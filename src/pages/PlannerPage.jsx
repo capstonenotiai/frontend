@@ -79,7 +79,7 @@ export function PlannerResults({ mode, data, events }) {
             <span><span className="sr-only">다음 행동: </span>{item.next_action}{deadline && <span className="planner-deadline">{deadline}</span>}</span>
           </span>}
           <span className={`planner-why ${mode === 'priority' ? 'is-sub' : ''}`}>{item.reason}</span>
-          {mode === 'discover' && item.check_reasons?.length > 0 && <span className="planner-why">확인할 조건: {item.check_reasons.map((reason) => String(reason).replace(/[.\s]+$/, '')).join(' · ')}</span>}
+          {mode === 'discover' && item.check_reasons?.length > 0 && <span className="planner-why planner-check">확인할 조건: {item.check_reasons.map((reason) => String(reason).replace(/[.\s]+$/, '')).join(' · ')}</span>}
         </span><span className={`planner-chevron ${expanded ? 'is-open' : ''}`}><ChevronIcon /></span>
       </button>
       {expanded && <div id={`planner-detail-${index}`}>{event ? <EventExpand event={event} /> : <div className="planner-source">{item.source_url ? <a href={item.source_url} target="_blank" rel="noreferrer">원문 보기 <ExternalLinkIcon /></a> : <p>원문 링크가 없어요.</p>}</div>}</div>}
