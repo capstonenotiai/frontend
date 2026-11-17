@@ -78,7 +78,8 @@
 .admin-reason { color: var(--color-check-fg); font-size: var(--text-sm); margin-top: var(--space-2); }
 .admin-report-badge { display: inline-block; font-size: var(--text-xs); border-radius: var(--radius-pill); background: var(--color-danger-soft, #fde8e8); color: var(--color-danger); padding: 3px var(--space-2); }
 .admin-pagination { display: flex; justify-content: end; align-items: center; gap: var(--space-3); margin-top: var(--space-4); font-size: var(--text-sm); color: var(--color-muted); }
-.admin-pagination span { margin-right: auto; }
+.admin-pagination span { margin-right: auto; white-space: nowrap; }
+.admin-review .admin-pagination button { flex: 0 0 auto; width: auto; }
 .admin-detail-nav, .admin-detail-nav > div { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .admin-detail-nav { margin-bottom: var(--space-5); }
 .admin-detail-nav span { font-size: var(--text-sm); color: var(--color-muted); white-space: nowrap; }
