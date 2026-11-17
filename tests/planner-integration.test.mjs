@@ -94,11 +94,19 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
     assert.match(intro, /어떤 도움이 필요한가요/); assert.equal((intro.match(/class="planner-mode"/g) || []).length, 3);
     assert.match(intro, /내 일정 1건 · 새 공지 1건/); assert.match(intro, /소프트웨어학부 · 3학년 · 재학/); assert.match(intro, /진로·취업/);
     assert.doesNotMatch(intro, /Study|Explorer|Balanced|7일 브리핑|ai-chat-panel/);
-    const data = { mode: 'focus', generated_at: new Date().toISOString(), items: [{ opportunity_id: 'o1', title: '핵심 공지', tier: 'core', reason: '먼저 볼 이유', focus_event_id: 'a', days_until_deadline: 3 }, { opportunity_id: 'o2', title: '접힌 공지', tier: 'secondary', reason: '미룰 이유', secondary_reason: 'schedule_conflict' }], needs_grouping_check: [{ opportunity_id: 'o3', title: '묶음 확인 공지' }], corrections: ['internal_correction'] };
+    // 집중할 것: 핵심과 겹치는 후순위는 비교표 한 묶음, 비교 상대가 없는 일정은 한 줄 안내 뒤에 접힌다.
+    const data = { mode: 'focus', generated_at: new Date().toISOString(), items: [
+      { opportunity_id: 'o1', title: '핵심 공지', tier: 'core', reason: '먼저 볼 이유', focus_event_id: 'a', days_until_deadline: 3, start_date: '2026-11-18', start_time: '14:00', conflicts_with: ['o2'], chosen_over: [], benefit: '멘토링', eligibility: 'eligible' },
+      { opportunity_id: 'o2', title: '겹친 공지', tier: 'secondary', reason: '미룰 이유', secondary_reason: 'schedule_conflict', start_date: '2026-11-18', start_time: '10:00', end_time: '17:00', conflicts_with: ['o1'], eligibility: 'needs_check' },
+      { opportunity_id: 'o4', title: '혼자인 공지', tier: 'core', reason: '따로 볼 이유', chosen_over: [], conflicts_with: [] }],
+      needs_grouping_check: [{ opportunity_id: 'o3', title: '묶음 확인 공지' }], corrections: ['internal_correction'] };
     writePlannerCache(storage, 'focus', 'fixture', data, JSON.stringify([globalThis.__plannerUser.plannerUserKey, globalThis.__plannerApp.plannerEventKey]));
     const restored = render(Planner, {}, '/planner?mode=focus');
-    assert.match(restored, /핵심 공지/); assert.match(restored, /후순위 1건/); assert.match(restored, /원문에서 일정 구성을 확인할 공지 1건/);
-    assert.doesNotMatch(restored, /접힌 공지|묶음 확인 공지|internal_correction|planner-placeholder/);
+    assert.match(restored, /겹치거나 비슷한 일정 <strong>1묶음<\/strong>을 비교했어요/); assert.match(restored, /시간 겹침/);
+    assert.match(restored, /핵심 공지/); assert.match(restored, /겹친 공지/); assert.match(restored, /11\/18\(수\) 10:00~17:00/);
+    assert.match(restored, /멘토링/); assert.match(restored, /확인 필요/); assert.match(restored, /→ 핵심 공지에 집중해요\./);
+    assert.match(restored, /비교 상대|비교하지 않았어요/); assert.match(restored, /원문에서 일정 구성을 확인할 공지 1건/);
+    assert.doesNotMatch(restored, /혼자인 공지|묶음 확인 공지|internal_correction|planner-placeholder/);
     assert.match(restored, /aria-expanded="false"/); assert.match(restored, />새로 받기</); assert.match(restored, /30분 동안 저장/);
     assert.equal((render(PlannerLoading).match(/class="planner-placeholder"/g) || []).length, 3);
     assert.match(render(PlannerLoading), /role="status"/);

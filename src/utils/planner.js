@@ -137,3 +137,47 @@ export function actionDeadline(item, event) {
   const label = [monthDay(day), time].filter(Boolean).join(' ');
   return label ? `${label}${attend ? ' 진행' : '까지'}` : '';
 }
+
+/** 집중할 것 비교 묶음: 핵심 하나 + 그 핵심이 이긴(chosen_over)·겹치는(conflicts_with) 후순위. 나머지는 rest. */
+export function buildFocusGroups(items = []) {
+  const byId = new Map(items.map((item) => [item.opportunity_id, item]));
+  const used = new Set();
+  const groups = [];
+  const free = (id) => byId.has(id) && !used.has(id) && byId.get(id).tier === 'secondary';
+  for (const core of items.filter((item) => item.tier === 'core')) {
+    const id = core.opportunity_id;
+    const conflicts = [...new Set([...(core.conflicts_with ?? []),
+      ...items.filter((item) => (item.conflicts_with ?? []).includes(id)).map((item) => item.opportunity_id)])].filter(free);
+    const similar = (core.chosen_over ?? []).filter((other) => free(other) && !conflicts.includes(other));
+    if (!conflicts.length && !similar.length) continue;
+    [id, ...conflicts, ...similar].forEach((value) => used.add(value));
+    groups.push({ kind: conflicts.length ? 'time' : 'similar', chosen: core, others: [...conflicts, ...similar].map((value) => byId.get(value)) });
+  }
+  return { groups, rest: items.filter((item) => !used.has(item.opportunity_id)) };
+}
+
+const ELIGIBILITY_LABELS = { eligible: '확인됨', needs_check: '확인 필요', unknown: '정보 없음', ineligible: '해당 안 됨' };
+export function eligibilityLabel(value) { return ELIGIBILITY_LABELS[value] ?? '정보 없음'; }
+
+/** 비교표 일시 칸: 11/18(수) 14:00 / 11/18(수) 10:00~17:00 / 11/25(수)~11/29(일) */
+export function scheduleLabel(item = {}) {
+  const { start_date: sd, end_date: ed, start_time: st, end_time: et } = item;
+  if (sd && ed && sd !== ed) return `${monthDay(sd)}~${monthDay(ed)}`;
+  const day = monthDay(sd || ed);
+  const time = st && et && st !== et ? `${st}~${et}` : st || et || '';
+  return [day, time].filter(Boolean).join(' ') || '날짜 미정';
+}
+
+function seoulParts(value) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+/** 서버가 준 겹치는 일정 [시작, 끝] (ISO) → "11/18(수) 14:00~16:00", 종일이면 "11/18(수)" */
+export function slotLabel(slot) {
+  if (!Array.isArray(slot) || slot.length < 2 || Number.isNaN(Date.parse(slot[0]))) return '';
+  const start = seoulParts(slot[0]), end = seoulParts(slot[1]);
+  return start.time === '00:00' && end.time === '00:00' ? monthDay(start.date) : `${monthDay(start.date)} ${start.time}~${end.time}`;
+}
+/** 화면용 제목: 앞의 [말머리]를 뗀다 */
+export function plainTitle(title = '') { return String(title).replace(/^(\s*\[[^\]]*\])+\s*/, '') || String(title); }

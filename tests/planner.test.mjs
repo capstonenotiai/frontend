@@ -114,3 +114,33 @@ test('먼저 할 일 기한: 접수는 마감 시각까지, 행사는 시작 시
   assert.equal(actionDeadline({ ...item, next_step_label: 'verify' }), '');
   assert.equal(actionDeadline({}), '');
 });
+
+test('집중할 것 비교 묶음: 핵심과 이긴·겹친 후순위를 묶고 나머지는 rest', async () => {
+  const { buildFocusGroups, scheduleLabel, eligibilityLabel } = await import('../src/utils/planner.js');
+  const items = [
+    { opportunity_id: 'o1', tier: 'core', chosen_over: [], conflicts_with: ['o2'] },
+    { opportunity_id: 'o2', tier: 'secondary', chosen_over: [], conflicts_with: ['o1'] },
+    { opportunity_id: 'o3', tier: 'core', chosen_over: ['o4', 'o5', 'o9'], conflicts_with: [] },
+    { opportunity_id: 'o4', tier: 'secondary' }, { opportunity_id: 'o5', tier: 'secondary' },
+    { opportunity_id: 'o6', tier: 'core', chosen_over: [], conflicts_with: [] },
+    { opportunity_id: 'o7', tier: 'secondary', conflicts_with: ['o8'] }, { opportunity_id: 'o8', tier: 'core', chosen_over: ['o2'] },
+  ];
+  const { groups, rest } = buildFocusGroups(items);
+  assert.deepEqual(groups.map((g) => [g.kind, g.chosen.opportunity_id, g.others.map((o) => o.opportunity_id)]),
+    [['time', 'o1', ['o2']], ['similar', 'o3', ['o4', 'o5']], ['time', 'o8', ['o7']]]);
+  assert.deepEqual(rest.map((item) => item.opportunity_id), ['o6']);
+  assert.deepEqual(buildFocusGroups([]), { groups: [], rest: [] });
+  assert.equal(scheduleLabel({ start_date: '2026-11-18', end_date: '2026-11-18', start_time: '10:00', end_time: '17:00' }), '11/18(수) 10:00~17:00');
+  assert.equal(scheduleLabel({ start_date: '2026-11-25', end_date: '2026-11-29' }), '11/25(수)~11/29(일)');
+  assert.equal(scheduleLabel({}), '날짜 미정');
+  assert.equal(eligibilityLabel('needs_check'), '확인 필요'); assert.equal(eligibilityLabel(undefined), '정보 없음');
+});
+
+test('겹치는 일정 시각은 서울 기준, 종일은 날짜만, 말머리 제거', async () => {
+  const { slotLabel, plainTitle } = await import('../src/utils/planner.js');
+  assert.equal(slotLabel(['2026-11-18T14:00:00+09:00', '2026-11-18T16:00:00+09:00']), '11/18(수) 14:00~16:00');
+  assert.equal(slotLabel(['2026-11-18T05:00:00+00:00', '2026-11-18T07:00:00+00:00']), '11/18(수) 14:00~16:00');
+  assert.equal(slotLabel(['2026-11-18T00:00:00+09:00', '2026-11-19T00:00:00+09:00']), '11/18(수)');
+  assert.equal(slotLabel(null), ''); assert.equal(slotLabel(['bad', 'bad']), '');
+  assert.equal(plainTitle('[외국인 취준생 필독] 2026 서울 박람회'), '2026 서울 박람회'); assert.equal(plainTitle('[공지]'), '[공지]');
+});

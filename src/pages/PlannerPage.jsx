@@ -7,7 +7,7 @@ import { useUser } from '../context/UserContext';
 import EventExpand from '../components/events/EventExpand';
 import { ChevronIcon, ExternalLinkIcon } from '../components/icons';
 import { getRecommendations } from '../services/plannerService';
-import { LABEL_FIELDS, findPlannerEvent, actionDeadline, countPlannerLabels, plannerLabel, secondaryLabel, plannerSummary, plannerErrorMessage, recommendationTime, readPlannerCache, writePlannerCache, invalidatePlannerCache, plannerStorage, refreshFailureState, refreshLimitMessage, REFRESH_NOTICE_MS } from '../utils/planner';
+import { LABEL_FIELDS, findPlannerEvent, actionDeadline, buildFocusGroups, scheduleLabel, slotLabel, plainTitle, eligibilityLabel, countPlannerLabels, plannerLabel, secondaryLabel, plannerSummary, plannerErrorMessage, recommendationTime, readPlannerCache, writePlannerCache, invalidatePlannerCache, plannerStorage, refreshFailureState, refreshLimitMessage, REFRESH_NOTICE_MS } from '../utils/planner';
 
 function Arrow() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -51,6 +51,46 @@ export function PlannerRefresh({ loading, notice, onRefresh }) {
 export function PlannerError({ error, onRetry }) {
   return <div className="planner-error" role="alert"><p>{plannerErrorMessage(error)}</p><button type="button" onClick={onRetry}>다시 시도</button></div>;
 }
+function ddayText(days) {
+  if (!Number.isFinite(days)) return '—';
+  return days < 0 ? `D+${Math.abs(days)}` : days === 0 ? 'D-day' : `D-${days}`;
+}
+// 시간 겹침의 일시는 서버가 준 '실제로 겹치는 일정'(conflict_times)을 쓴다. 고른 것은 첫 상대와의 겹침 기준.
+const overlapLabel = (item, group) => {
+  const other = item === group.chosen ? group.others[0] : group.chosen;
+  return slotLabel(item.conflict_times?.[other?.opportunity_id]) || scheduleLabel(item);
+};
+const FOCUS_ROWS = {
+  time: [['일시', overlapLabel], ['얻는 것', (item) => item.benefit || '—'], ['자격', (item) => eligibilityLabel(item.eligibility)]],
+  similar: [['마감', (item) => ddayText(item.days_until_deadline)], ['얻는 것', (item) => item.benefit || '—'], ['자격', (item) => eligibilityLabel(item.eligibility)]],
+};
+/** 집중할 것 비교표 한 묶음: 열 = 일정(고른 것 먼저), 행 = 비교 기준. 제목을 누르면 아래에 상세. */
+function FocusTable({ group, events, open, onOpen }) {
+  // 표는 고른 것 + 최대 3개까지. 넘치는 일정은 표 아래에 이름만 보여준다.
+  const members = [group.chosen, ...group.others.slice(0, 3)];
+  const extra = group.others.slice(3);
+  const time = group.kind === 'time';
+  const category = getInterestCategory(group.chosen.category)?.label || group.chosen.category || '같은 분야';
+  const openItem = members.find((item) => open === `cmp-${item.opportunity_id}`);
+  const event = openItem && findPlannerEvent(openItem, events);
+  return <section className="focus-cmp" aria-label={time ? '시간이 겹치는 일정 비교' : '비슷한 활동 비교'}>
+    <div className="focus-cmp-tag"><span className={`focus-pill ${time ? 'time' : 'same'}`}>{time ? '시간 겹침' : '비슷한 활동'}</span>
+      {time ? overlapLabel(group.chosen, group).split(' ')[0] : `${category} ${group.others.length + 1}개`}</div>
+    <div className="focus-table-wrap"><table className="focus-table" style={{ '--focus-cols': members.length }}>
+      <thead><tr><td aria-hidden="true" />{members.map((item, index) => {
+        const key = `cmp-${item.opportunity_id}`;
+        return <th scope="col" key={key} className={index === 0 ? 'pick' : ''}>
+          <button type="button" aria-expanded={open === key} onClick={() => onOpen(open === key ? null : key)}>
+            {index === 0 && <span aria-hidden="true">✓ </span>}{index === 0 && <span className="sr-only">집중: </span>}{plainTitle(item.title)}</button></th>;
+      })}</tr></thead>
+      <tbody>{FOCUS_ROWS[group.kind].map(([label, value]) => <tr key={label}><th scope="row">{label}</th>
+        {members.map((item, index) => <td key={item.opportunity_id} className={index === 0 ? 'pick' : ''}><span className="focus-cell">{value(item, group)}</span></td>)}</tr>)}</tbody>
+    </table></div>
+    {extra.length > 0 && <p className="focus-more">함께 미룬 일정: {extra.map((item) => plainTitle(item.title)).join(' · ')}</p>}
+    <p className="focus-why"><b>→ {plainTitle(group.chosen.title)}에 집중해요.</b> {group.chosen.reason}</p>
+    {openItem && <div className="focus-detail">{event ? <EventExpand event={event} /> : <div className="planner-source">{openItem.source_url ? <a href={openItem.source_url} target="_blank" rel="noreferrer">원문 보기 <ExternalLinkIcon /></a> : <p>원문 링크가 없어요.</p>}</div>}</div>}
+  </section>;
+}
 export function PlannerResults({ mode, data, events }) {
   const [open, setOpen] = useState(null);
   const [minorOpen, setMinorOpen] = useState(false);
@@ -85,6 +125,22 @@ export function PlannerResults({ mode, data, events }) {
       {expanded && <div id={`planner-detail-${index}`}>{event ? <EventExpand event={event} /> : <div className="planner-source">{item.source_url ? <a href={item.source_url} target="_blank" rel="noreferrer">원문 보기 <ExternalLinkIcon /></a> : <p>원문 링크가 없어요.</p>}</div>}</div>}
     </div>;
   };
+  const groupingFold = grouping.length > 0 && <><button type="button" className="planner-fold" aria-expanded={groupOpen} aria-controls="planner-grouping" onClick={() => setGroupOpen(!groupOpen)}><span className={`planner-chevron ${groupOpen ? 'is-open' : ''}`}><ChevronIcon /></span>원문에서 일정 구성을 확인할 공지 {grouping.length}건</button>{groupOpen && <div id="planner-grouping">{grouping.map((item, index) => <div className="planner-group-item" key={item.opportunity_id ?? index}><strong>{item.title}</strong>{item.reason && <p>{item.reason}</p>}</div>)}</div>}</>;
+  if (mode === 'focus' && items.length) {
+    // 집중할 것: 겹치거나 비슷한 일정 묶음마다 비교표, 비교 상대가 없는 일정은 한 줄 안내 뒤로
+    const { groups, rest } = buildFocusGroups(items);
+    const restOpen = minorOpen || !groups.length;
+    return <>
+      <section className="planner-summary" aria-label="추천 요약"><p>{groups.length ? <>겹치거나 비슷한 일정 <strong>{groups.length}묶음</strong>을 비교했어요.</> : '지금은 겹치거나 비슷한 일정이 없어요.'}</p></section>
+      {groups.map((group) => <FocusTable key={group.chosen.opportunity_id} group={group} events={events} open={open} onOpen={setOpen} />)}
+      {(rest.length > 0 || grouping.length > 0) && <section className="planner-list" aria-label="비교하지 않은 일정">
+        {rest.length > 0 && groups.length > 0 && <div className="planner-excluded"><span className="planner-excluded-mark" aria-hidden="true">ⓘ</span><span>겹치거나 비슷한 일정이 없는 {rest.length}건은 비교하지 않았어요</span>
+          <button type="button" aria-expanded={minorOpen} aria-controls="planner-minor" onClick={() => { setMinorOpen(!minorOpen); setOpen(null); }}>{minorOpen ? '접기' : '보기'}</button></div>}
+        {rest.length > 0 && restOpen && <div id="planner-minor">{rest.map(renderItem)}</div>}
+        {groupingFold}
+      </section>}
+    </>;
+  }
   return <>
     <section className="planner-summary" aria-label="추천 요약"><SummarySentence mode={mode} data={data} /><div className="planner-counts">{countPlannerLabels(mode, items).filter(({ value, count }) => count > 0 && !(mode === 'discover' && value === minorValue)).map(({ value, label, count }) => <span key={value}>{label} <b>{count}</b></span>)}</div></section>
     {!items.length && <div className="planner-empty"><p>추천할 공지가 아직 없어요. 전체 공지에서 관심 저장이나 일정 등록을 해 보세요.</p><Link to="/schedules">전체 공지 보기</Link></div>}
@@ -96,7 +152,7 @@ export function PlannerResults({ mode, data, events }) {
         {minorOpen && <div id="planner-minor" className="planner-muted">{minor.map(renderItem)}</div>}
       </>}
       {minor.length > 0 && mode !== 'discover' && <><button type="button" className="planner-fold" aria-expanded={minorOpen} aria-controls="planner-minor" onClick={() => { setMinorOpen(!minorOpen); setOpen(null); }}><span className={`planner-chevron ${minorOpen ? 'is-open' : ''}`}><ChevronIcon /></span>{plannerLabel(mode, minorValue)} {minor.length}건</button>{minorOpen && <div id="planner-minor">{minor.map(renderItem)}</div>}</>}
-      {grouping.length > 0 && <><button type="button" className="planner-fold" aria-expanded={groupOpen} aria-controls="planner-grouping" onClick={() => setGroupOpen(!groupOpen)}><span className={`planner-chevron ${groupOpen ? 'is-open' : ''}`}><ChevronIcon /></span>원문에서 일정 구성을 확인할 공지 {grouping.length}건</button>{groupOpen && <div id="planner-grouping">{grouping.map((item, index) => <div className="planner-group-item" key={item.opportunity_id ?? index}><strong>{item.title}</strong>{item.reason && <p>{item.reason}</p>}</div>)}</div>}</>}
+      {groupingFold}
     </section>}
   </>;
 }
