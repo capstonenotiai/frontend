@@ -52,6 +52,7 @@ export function AppDataProvider({ children, enabled = true }) {
 
   const refresh = useCallback(async ({ silent = false } = {}) => {
     const version = ++refreshVersion.current;
+    eventService.clearEventDetailCache?.();
     const inputAccount = account.current;
     if (!silent) setStatus('loading');
     setError(null);
@@ -82,6 +83,17 @@ export function AppDataProvider({ children, enabled = true }) {
     else ++refreshVersion.current; // 공개 화면으로 나간 뒤 이전 조회 응답을 반영하지 않는다.
   }, [refresh, enabled, profile.email]);
   useEffect(() => { if (enabled && sourcesVersion) refresh({ silent: true }); }, [sourcesVersion, refresh, enabled]);
+
+  // 등록·해제 버튼을 누른 즉시 화면에 반영한다. 실패하면 runAction 이 서버 상태로 다시 불러와 되돌린다.
+  const markRegistered = useCallback((id, interview, registered) => {
+    const anchor = eventsRef.current.find((item) => item.id === String(id));
+    if (!anchor) return;
+    const inBundle = (item) => interview || anchor.event_type === 'interview' ? item.id === anchor.id
+      : item.id === anchor.id || (anchor.notice_id != null && item.notice_id === anchor.notice_id && item.event_type !== 'interview');
+    // 진행 중인 이전 재조회가 낙관적 표시를 덮어쓰지 않게 한다.
+    ++refreshVersion.current;
+    setEvents((items) => items.map((item) => inBundle(item) ? { ...item, registered } : item));
+  }, []);
 
   // Bundle writes can partially succeed in Google. Always reload the server's actual state.
   const runAction = useCallback(async (request) => {
@@ -119,6 +131,7 @@ export function AppDataProvider({ children, enabled = true }) {
           queued = true;
           return;
         }
+        markRegistered(request.id, request.interview, true);
         if (request.interview) await calendarService.registerInterview(request.id);
         else await calendarService.registerEvent(request.id);
       }
@@ -129,7 +142,12 @@ export function AppDataProvider({ children, enabled = true }) {
       if (message) showUndo(message);
     }
     return ok;
-  }, [runAction, showUndo]);
+  }, [runAction, showUndo, markRegistered]);
+
+  const unregister = useCallback((id) => runAction(() => {
+    markRegistered(id, false, false);
+    return calendarService.unregisterEvent(id);
+  }), [runAction, markRegistered]);
 
   const toggleRegister = useCallback(
     (id) => {
@@ -137,9 +155,9 @@ export function AppDataProvider({ children, enabled = true }) {
       if (!event) return;
       const registered = !event.registered;
       if (registered) return processRegistrations([{ id, interview: event.event_type === 'interview' }]);
-      return runAction(() => calendarService.unregisterEvent(id));
+      return unregister(id);
     },
-    [runAction, processRegistrations],
+    [unregister, processRegistrations],
   );
 
   const registerAll = useCallback(() => {
@@ -162,7 +180,7 @@ export function AppDataProvider({ children, enabled = true }) {
 
   const registerInterview = useCallback((id) => processRegistrations([{ id, interview: true }]), [processRegistrations]);
   const requestRegistration = useCallback((id, interview = false, editing = false, successMessage) => processRegistrations([{ id, interview, editing, successMessage }]), [processRegistrations]);
-  const unregisterDetailEvent = useCallback((id) => runAction(() => calendarService.unregisterEvent(id)), [runAction]);
+  const unregisterDetailEvent = unregister;
   const setActionStatus = useCallback((id, status) => runAction(() => eventService.setActionStatus(id, status)), [runAction]);
   const setDismissed = useCallback((id, value) => runAction(() => eventService.setDismissed(id, value)), [runAction]);
   const updateOverrides = useCallback((id, overrides) => runAction(() => eventService.updateOverrides(id, overrides)), [runAction]);
@@ -171,8 +189,11 @@ export function AppDataProvider({ children, enabled = true }) {
   const confirmRegistration = useCallback(async (overrides) => {
     const request = registrationQueue[0];
     if (!request) return false;
-    const ok = await runAction(() => request.interview ? calendarService.registerInterview(request.id, overrides, true)
-      : calendarService.registerEvent(request.id, overrides, true));
+    const ok = await runAction(() => {
+      markRegistered(request.id, request.interview, true);
+      return request.interview ? calendarService.registerInterview(request.id, overrides, true)
+        : calendarService.registerEvent(request.id, overrides, true);
+    });
     if (ok) {
       if (request.successMessage) showUndo(request.successMessage);
       const remaining = registrationQueue.slice(1);
@@ -180,7 +201,7 @@ export function AppDataProvider({ children, enabled = true }) {
       else setRegistrationQueue([]);
     }
     return ok;
-  }, [registrationQueue, runAction, processRegistrations, showUndo]);
+  }, [registrationQueue, runAction, processRegistrations, showUndo, markRegistered]);
 
   // D-day, 임박도 등 화면용 파생 값
   const enrichedEvents = useMemo(() => {
