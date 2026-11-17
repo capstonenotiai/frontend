@@ -16,7 +16,7 @@ export default function Sidebar() {
       className={({ isActive }) => `sb-item${page.parent ? ' sb-subitem' : ''}${isActive ? ' on' : ''}`}>
       {page.icon && <NavIcon name={page.icon} />}
       {page.label}
-      {(page.badge === 'saved' || badges[page.badge] > 0) && <span className="sb-badge">{badges[page.badge]}</span>}
+      {page.badge && <span className="sb-badge">{badges[page.badge]}</span>}
     </NavLink>
   );
   return (

@@ -45,7 +45,7 @@ export default function MobileNavigation() {
           <div className="sb-section">{section.label}</div>
           {morePages.filter(page => page.section === section.id).map(page => <NavLink key={page.id} to={page.path} className="sb-item" onClick={() => setOpen(false)}>
             <NavIcon name={page.icon || 'list'} />{page.label}
-            {(page.badge === 'saved' || badges[page.badge] > 0) && <span className="sb-badge">{badges[page.badge]}</span>}
+            {page.badge && <span className="sb-badge">{badges[page.badge]}</span>}
           </NavLink>)}
         </nav>)}
         <button className="mobile-more-close" type="button" aria-label="메뉴 닫기" onClick={() => setOpen(false)}><CloseIcon /></button>
