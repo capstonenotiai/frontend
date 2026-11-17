@@ -7,7 +7,7 @@ import { useUser } from '../context/UserContext';
 import EventExpand from '../components/events/EventExpand';
 import { ChevronIcon, ExternalLinkIcon } from '../components/icons';
 import { getRecommendations } from '../services/plannerService';
-import { LABEL_FIELDS, findPlannerEvent, countPlannerLabels, plannerLabel, secondaryLabel, plannerSummary, plannerErrorMessage, recommendationTime, readPlannerCache, writePlannerCache, invalidatePlannerCache, plannerStorage, refreshFailureState, refreshLimitMessage, REFRESH_NOTICE_MS } from '../utils/planner';
+import { LABEL_FIELDS, findPlannerEvent, actionDeadline, countPlannerLabels, plannerLabel, secondaryLabel, plannerSummary, plannerErrorMessage, recommendationTime, readPlannerCache, writePlannerCache, invalidatePlannerCache, plannerStorage, refreshFailureState, refreshLimitMessage, REFRESH_NOTICE_MS } from '../utils/planner';
 
 function Arrow() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -69,12 +69,16 @@ export function PlannerResults({ mode, data, events }) {
     const label = plannerLabel(mode, item[field]);
     const secondary = mode === 'focus' && item.tier === 'secondary' ? secondaryLabel(item.secondary_reason) : '';
     const days = item.days_until_deadline;
+    const deadline = mode === 'priority' ? actionDeadline(item, event) : '';
     return <div className={`planner-item ${expanded ? 'is-open' : ''}`} key={id}>
       <button type="button" className={`planner-rec ${mode === 'priority' ? 'has-rank' : ''}`} onClick={() => setOpen(expanded ? null : id)} aria-expanded={expanded} aria-controls={`planner-detail-${index}`}>
         {mode === 'priority' && <span className="planner-rank">{index + 1}</span>}
         <span className="planner-rec-body"><span className="planner-rec-title"><strong>{item.title}</strong>{label && <span className="planner-badge">{label}</span>}{secondary && <span className="planner-badge grey">{secondary}</span>}{Number.isFinite(days) && <span className={`planner-dday ${days <= 7 ? 'hot' : ''}`}>{days < 0 ? `D+${Math.abs(days)}` : days === 0 ? 'D-day' : `D-${days}`}</span>}</span>
-          <span className="planner-why">{item.reason}</span>
-          {mode === 'priority' && item.next_action && <span className="planner-next"><b>다음 행동</b> {item.next_action}</span>}
+          {mode === 'priority' && item.next_action && <span className="planner-next">
+            <span className="planner-next-arrow" aria-hidden="true">→</span>
+            <span><span className="sr-only">다음 행동: </span>{item.next_action}{deadline && <span className="planner-deadline">{deadline}</span>}</span>
+          </span>}
+          <span className={`planner-why ${mode === 'priority' ? 'is-sub' : ''}`}>{item.reason}</span>
           {mode === 'discover' && item.check_reasons?.length > 0 && <span className="planner-why">확인할 조건: {item.check_reasons.map((reason) => String(reason).replace(/[.\s]+$/, '')).join(' · ')}</span>}
         </span><span className={`planner-chevron ${expanded ? 'is-open' : ''}`}><ChevronIcon /></span>
       </button>
@@ -82,7 +86,7 @@ export function PlannerResults({ mode, data, events }) {
     </div>;
   };
   return <>
-    <section className="planner-summary" aria-label="추천 요약"><SummarySentence mode={mode} data={data} /><div className="planner-counts">{countPlannerLabels(mode, items).map(({ value, label, count }) => <span key={value}>{label} <b>{count}</b></span>)}</div></section>
+    <section className="planner-summary" aria-label="추천 요약"><SummarySentence mode={mode} data={data} /><div className="planner-counts">{countPlannerLabels(mode, items).filter(({ count }) => count > 0).map(({ value, label, count }) => <span key={value}>{label} <b>{count}</b></span>)}</div></section>
     {!items.length && <div className="planner-empty"><p>추천할 공지가 아직 없어요. 전체 공지에서 관심 저장이나 일정 등록을 해 보세요.</p><Link to="/schedules">전체 공지 보기</Link></div>}
     {(items.length > 0 || grouping.length > 0) && <section className="planner-list" aria-label="추천 목록">
       {main.map(renderItem)}

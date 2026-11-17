@@ -122,3 +122,18 @@ export function findPlannerEvent(item, events = []) {
   return (raw && events.find((event) => String(event.id) === raw || String(event.id) === plain))
     || (notice && events.find((event) => String(event.notice_id) === notice)) || null;
 }
+
+const WEEKDAYS = '일월화수목금토';
+function monthDay(value) {
+  const [y, m, d] = String(value || '').split('-').map(Number);
+  return y && m && d ? `${m}/${d}(${WEEKDAYS[new Date(y, m - 1, d).getDay()]})` : '';
+}
+/** 먼저 할 일의 기한 한 줄: 접수·제출은 "11/19(목) 16:00까지", 행사·면접은 "11/18(수) 10:00 진행". 확인 필요는 표시하지 않는다. */
+export function actionDeadline(item, event) {
+  if (!item?.action_date || item.next_step_label === 'verify') return '';
+  const day = item.action_date;
+  const attend = ['event', 'interview'].includes(event?.event_type);
+  const time = !attend && day === item.end_date ? item.end_time : day === item.start_date ? item.start_time : '';
+  const label = [monthDay(day), time].filter(Boolean).join(' ');
+  return label ? `${label}${attend ? ' 진행' : '까지'}` : '';
+}

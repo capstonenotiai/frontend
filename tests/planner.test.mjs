@@ -104,3 +104,13 @@ test('플래너: 서버 일정 번호(e123)와 앱 번호를 맞추고 없으면
   assert.equal(findPlannerEvent({ focus_event_id: 'e5', opportunity_id: 'o46' }, events), null);
   assert.equal(findPlannerEvent({}, events), null);
 });
+
+test('먼저 할 일 기한: 접수는 마감 시각까지, 행사는 시작 시각 진행, 확인 필요는 표시 안 함', async () => {
+  const { actionDeadline } = await import('../src/utils/planner.js');
+  const item = { action_date: '2026-11-19', start_date: '2026-11-17', end_date: '2026-11-19', start_time: '', end_time: '16:00', next_step_label: 'act' };
+  assert.equal(actionDeadline(item, { event_type: 'application' }), '11/19(목) 16:00까지');
+  assert.equal(actionDeadline({ ...item, end_time: '' }), '11/19(목)까지');
+  assert.equal(actionDeadline({ ...item, action_date: '2026-11-18', start_date: '2026-11-18', start_time: '10:00' }, { event_type: 'event' }), '11/18(수) 10:00 진행');
+  assert.equal(actionDeadline({ ...item, next_step_label: 'verify' }), '');
+  assert.equal(actionDeadline({}), '');
+});
