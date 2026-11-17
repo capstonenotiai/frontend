@@ -70,6 +70,7 @@
 .admin-filters button[aria-pressed=true] { background: transparent; box-shadow: inset 0 -2px var(--color-accent); }
 .admin-zero { opacity: .4; }
 .admin-list { border: 1px solid var(--color-rule); border-radius: var(--radius-lg); overflow: hidden; background: var(--color-paper); }
+.admin-list > p { margin: 0; padding: var(--space-8) var(--space-5); text-align: center; color: var(--color-muted); line-height: 1.6; }
 .admin-review .admin-queue-item { margin: 0; padding: var(--space-5); text-decoration: none; color: var(--color-ink); border-bottom: 1px solid var(--color-rule); }
 .admin-queue-item:last-child { border-bottom: 0; }
 .admin-queue-item:hover { background: var(--color-paper-2); }
@@ -106,6 +107,7 @@
   .admin-review .admin-detail { display: block; }
   .admin-editor-columns, .admin-fields { grid-template-columns: minmax(0, 1fr); }
   .admin-list { border: 0; background: transparent; overflow: visible; }
+  .admin-list > p { padding: var(--space-5) var(--space-4); border: 1px dashed var(--color-rule); border-radius: var(--radius-md); }
   .admin-review .admin-queue-item { border: 1px solid var(--color-rule); border-radius: var(--radius-md); background: var(--color-paper); padding: var(--space-4); margin-bottom: var(--space-3); }
   .admin-editor-columns > div, .admin-review .admin-excerpts, .admin-review-footer { padding: var(--space-4); }
   .admin-detail-nav { gap: 4px; }
