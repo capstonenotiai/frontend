@@ -113,3 +113,12 @@ export function recommendationTime(value) {
   const hour = Number(parts.hour);
   return `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}:${parts.minute}에 받은 추천, 30분 동안 저장`;
 }
+
+/** 추천 항목의 일정(서버 형식 e123 / 앱 형식 123)을 찾고, 없으면 같은 공지(o45 → notice_id 45)의 일정으로 찾는다. */
+export function findPlannerEvent(item, events = []) {
+  const raw = String(item?.focus_event_id ?? '');
+  const plain = /^e\d+$/.test(raw) ? raw.slice(1) : raw;
+  const notice = /^o\d+$/.test(String(item?.opportunity_id ?? '')) ? String(item.opportunity_id).slice(1) : null;
+  return (raw && events.find((event) => String(event.id) === raw || String(event.id) === plain))
+    || (notice && events.find((event) => String(event.notice_id) === notice)) || null;
+}

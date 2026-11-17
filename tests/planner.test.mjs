@@ -94,3 +94,13 @@ test('요약 문장 조사: 받침 없으면 예요', async () => {
   assert.equal(withCopula('장학 신청'), '장학 신청이에요');
   assert.equal(withCopula('2026 SW'), '2026 SW예요');
 });
+
+test('플래너: 서버 일정 번호(e123)와 앱 번호를 맞추고 없으면 같은 공지 일정으로 찾는다', async () => {
+  const { findPlannerEvent } = await import('../src/utils/planner.js');
+  const events = [{ id: '1101', notice_id: 900 }, { id: 'ev1', notice_id: 1 }, { id: '77', notice_id: 45 }];
+  assert.equal(findPlannerEvent({ focus_event_id: 'e1101' }, events).id, '1101');
+  assert.equal(findPlannerEvent({ focus_event_id: 'ev1' }, events).id, 'ev1');
+  assert.equal(findPlannerEvent({ focus_event_id: 'e5', opportunity_id: 'o45' }, events).id, '77');
+  assert.equal(findPlannerEvent({ focus_event_id: 'e5', opportunity_id: 'o46' }, events), null);
+  assert.equal(findPlannerEvent({}, events), null);
+});

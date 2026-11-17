@@ -7,7 +7,7 @@ import { useUser } from '../context/UserContext';
 import EventExpand from '../components/events/EventExpand';
 import { ChevronIcon, ExternalLinkIcon } from '../components/icons';
 import { getRecommendations } from '../services/plannerService';
-import { LABEL_FIELDS, countPlannerLabels, plannerLabel, secondaryLabel, plannerSummary, plannerErrorMessage, recommendationTime, readPlannerCache, writePlannerCache, invalidatePlannerCache, plannerStorage, refreshFailureState, refreshLimitMessage, REFRESH_NOTICE_MS } from '../utils/planner';
+import { LABEL_FIELDS, findPlannerEvent, countPlannerLabels, plannerLabel, secondaryLabel, plannerSummary, plannerErrorMessage, recommendationTime, readPlannerCache, writePlannerCache, invalidatePlannerCache, plannerStorage, refreshFailureState, refreshLimitMessage, REFRESH_NOTICE_MS } from '../utils/planner';
 
 function Arrow() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -65,7 +65,7 @@ export function PlannerResults({ mode, data, events }) {
     const index = items.indexOf(item);
     const id = `${item.opportunity_id ?? 'item'}-${index}`;
     const expanded = open === id;
-    const event = events.find((entry) => String(entry.id) === String(item.focus_event_id));
+    const event = findPlannerEvent(item, events);
     const label = plannerLabel(mode, item[field]);
     const secondary = mode === 'focus' && item.tier === 'secondary' ? secondaryLabel(item.secondary_reason) : '';
     const days = item.days_until_deadline;
