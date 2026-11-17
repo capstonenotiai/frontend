@@ -139,8 +139,20 @@ export function actionDeadline(item, event) {
 }
 
 /** 집중할 것 비교 묶음: 핵심 하나 + 그 핵심이 이긴(chosen_over)·겹치는(conflicts_with) 후순위. 나머지는 rest. */
-export function buildFocusGroups(items = []) {
+export function buildFocusGroups(items = [], serverGroups = null) {
   const byId = new Map(items.map((item) => [item.opportunity_id, item]));
+  if (Array.isArray(serverGroups)) {
+    // 서버가 정한 묶음 (매번 같다). 묶음의 핵심을 첫 열로, 핵심이 없으면 서버 순서 첫 번째.
+    const used = new Set();
+    const groups = serverGroups.map((group) => {
+      const members = (group.members ?? []).map((id) => byId.get(id)).filter(Boolean);
+      if (members.length < 2) return null;
+      const chosen = members.find((item) => item.tier === 'core') ?? members[0];
+      members.forEach((item) => used.add(item.opportunity_id));
+      return { kind: group.kind === 'time' ? 'time' : 'similar', chosen, others: members.filter((item) => item !== chosen) };
+    }).filter(Boolean);
+    return { groups, rest: items.filter((item) => !used.has(item.opportunity_id)) };
+  }
   const used = new Set();
   const groups = [];
   const free = (id) => byId.has(id) && !used.has(id) && byId.get(id).tier === 'secondary';

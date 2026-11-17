@@ -105,7 +105,7 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
     assert.match(restored, /겹치거나 비슷한 일정 <strong>1묶음<\/strong>을 비교했어요/); assert.match(restored, /시간 겹침/);
     assert.match(restored, /핵심 공지/); assert.match(restored, /겹친 공지/); assert.match(restored, /11\/18\(수\) 10:00~17:00/);
     assert.match(restored, /멘토링/); assert.match(restored, /확인 필요/); assert.match(restored, /→ 핵심 공지에 집중해요\./);
-    assert.match(restored, /비교 상대|비교하지 않았어요/); assert.match(restored, /원문에서 일정 구성을 확인할 공지 1건/);
+    assert.match(restored, /비교하지 않았어요/); assert.doesNotMatch(restored, /원문에서 일정 구성을 확인할 공지/);
     assert.doesNotMatch(restored, /혼자인 공지|묶음 확인 공지|internal_correction|planner-placeholder/);
     assert.match(restored, /aria-expanded="false"/); assert.match(restored, />새로 받기</); assert.match(restored, /30분 동안 저장/);
     assert.equal((render(PlannerLoading).match(/class="planner-placeholder"/g) || []).length, 3);

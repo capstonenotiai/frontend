@@ -144,3 +144,11 @@ test('겹치는 일정 시각은 서울 기준, 종일은 날짜만, 말머리 �
   assert.equal(slotLabel(null), ''); assert.equal(slotLabel(['bad', 'bad']), '');
   assert.equal(plainTitle('[외국인 취준생 필독] 2026 서울 박람회'), '2026 서울 박람회'); assert.equal(plainTitle('[공지]'), '[공지]');
 });
+
+test('집중할 것: 서버 묶음이 있으면 그대로 쓰고 핵심을 첫 열로', async () => {
+  const { buildFocusGroups } = await import('../src/utils/planner.js');
+  const items = [{ opportunity_id: 'o1', tier: 'secondary' }, { opportunity_id: 'o2', tier: 'core' }, { opportunity_id: 'o3', tier: 'secondary' }, { opportunity_id: 'o4', tier: 'core' }];
+  const { groups, rest } = buildFocusGroups(items, [{ group_id: 'g1', kind: 'time', members: ['o1', 'o2'] }, { group_id: 'g2', kind: 'similar', members: ['o3', 'o9'] }]);
+  assert.deepEqual(groups.map((g) => [g.kind, g.chosen.opportunity_id, g.others.map((o) => o.opportunity_id)]), [['time', 'o2', ['o1']]]);
+  assert.deepEqual(rest.map((i) => i.opportunity_id), ['o3', 'o4']);
+});

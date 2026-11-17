@@ -128,16 +128,15 @@ export function PlannerResults({ mode, data, events }) {
   const groupingFold = grouping.length > 0 && <><button type="button" className="planner-fold" aria-expanded={groupOpen} aria-controls="planner-grouping" onClick={() => setGroupOpen(!groupOpen)}><span className={`planner-chevron ${groupOpen ? 'is-open' : ''}`}><ChevronIcon /></span>원문에서 일정 구성을 확인할 공지 {grouping.length}건</button>{groupOpen && <div id="planner-grouping">{grouping.map((item, index) => <div className="planner-group-item" key={item.opportunity_id ?? index}><strong>{item.title}</strong>{item.reason && <p>{item.reason}</p>}</div>)}</div>}</>;
   if (mode === 'focus' && items.length) {
     // 집중할 것: 겹치거나 비슷한 일정 묶음마다 비교표, 비교 상대가 없는 일정은 한 줄 안내 뒤로
-    const { groups, rest } = buildFocusGroups(items);
+    const { groups, rest } = buildFocusGroups(items, data.comparison_groups);
     const restOpen = minorOpen || !groups.length;
     return <>
       <section className="planner-summary" aria-label="추천 요약"><p>{groups.length ? <>겹치거나 비슷한 일정 <strong>{groups.length}묶음</strong>을 비교했어요.</> : '지금은 겹치거나 비슷한 일정이 없어요.'}</p></section>
       {groups.map((group) => <FocusTable key={group.chosen.opportunity_id} group={group} events={events} open={open} onOpen={setOpen} />)}
-      {(rest.length > 0 || grouping.length > 0) && <section className="planner-list" aria-label="비교하지 않은 일정">
+      {rest.length > 0 && <section className="planner-list" aria-label="비교하지 않은 일정">
         {rest.length > 0 && groups.length > 0 && <div className="planner-excluded"><span className="planner-excluded-mark" aria-hidden="true">ⓘ</span><span>겹치거나 비슷한 일정이 없는 {rest.length}건은 비교하지 않았어요</span>
           <button type="button" aria-expanded={minorOpen} aria-controls="planner-minor" onClick={() => { setMinorOpen(!minorOpen); setOpen(null); }}>{minorOpen ? '접기' : '보기'}</button></div>}
-        {rest.length > 0 && restOpen && <div id="planner-minor">{rest.map(renderItem)}</div>}
-        {groupingFold}
+        {restOpen && <div id="planner-minor">{rest.map(renderItem)}</div>}
       </section>}
     </>;
   }
