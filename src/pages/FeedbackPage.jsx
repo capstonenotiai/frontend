@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import LoadError from '../components/LoadError';
+import MyReports from '../components/MyReports';
 import { useAppData } from '../context/AppDataContext';
 import { useUser } from '../context/UserContext';
 import { getEventDetail, reportEvent } from '../services/eventService';
@@ -99,6 +100,7 @@ export default function FeedbackPage() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'opinion' ? 'opinion' : 'report';
   const refs = useRef({}), [notice, setNotice] = useState('');
+  const [reportsVersion, setReportsVersion] = useState(0);
   useEffect(() => { if (!['report', 'opinion'].includes(params.get('tab'))) { const next = new URLSearchParams(params); next.set('tab', 'report'); setParams(next, { replace: true }); } }, [params, setParams]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(''), 5000); return () => clearTimeout(timer); }, [notice]);
   const select = (value, focus = false) => { const next = new URLSearchParams(params); next.set('tab', value); setParams(next); setNotice(''); if (focus) refs.current[value]?.focus(); };
@@ -106,7 +108,8 @@ export default function FeedbackPage() {
     {[['report', '일정 신고'], ['opinion', '서비스 의견']].map(([id, label]) => <button key={id} ref={element => { refs.current[id] = element; }} type="button" id={`feedback-tab-${id}`} role="tab" aria-selected={tab === id} aria-controls={`feedback-panel-${id}`} tabIndex={tab === id ? 0 : -1} onClick={() => select(id)} onKeyDown={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); select(event.key === 'Home' ? 'report' : event.key === 'End' ? 'opinion' : tab === 'report' ? 'opinion' : 'report', true); } }}>{label}</button>)}
   </div><p>{tab === 'report' ? '잘못 추출된 일정을 알려 주시면 확인 후 고칠게요.' : '보내 주신 의견은 서비스 개선에 써요.'}</p></div>
     <div className="feedback-card" id={`feedback-panel-${tab}`} role="tabpanel" aria-labelledby={`feedback-tab-${tab}`}>
-      {tab === 'report' ? <ReportForm onSuccess={setNotice} /> : <OpinionForm onSuccess={setNotice} />}
+      {tab === 'report' ? <ReportForm onSuccess={message => { setNotice(message); setReportsVersion(value => value + 1); }} /> : <OpinionForm onSuccess={setNotice} />}
     </div><div className="feedback-notice" role="status" aria-live="polite">{notice}</div>
+    <MyReports refreshKey={reportsVersion} />
   </div>;
 }

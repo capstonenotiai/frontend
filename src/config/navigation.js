@@ -14,6 +14,12 @@ export const SIDEBAR_SECTIONS = [
   { id: 'main', label: '메뉴' },
   { id: 'settings', label: '설정' },
 ];
+// 경로·문구·관리자 권한은 APP_PAGES 한 곳에서 관리한다.
+export const MOBILE_TAB_IDS = ['dashboard', 'schedules', 'planner', 'calendar'];
+export const MOBILE_TABS = MOBILE_TAB_IDS.map(id => APP_PAGES.find(page => page.id === id));
+export function getMorePages(isAdmin) {
+  return APP_PAGES.filter(page => !MOBILE_TAB_IDS.includes(page.id) && (!page.adminOnly || isAdmin));
+}
 export function getAppPageByPath(pathname) {
   return [...APP_PAGES].sort((a, b) => b.path.length - a.path.length)
     .find((page) => pathname === page.path || pathname.startsWith(`${page.path}/`));

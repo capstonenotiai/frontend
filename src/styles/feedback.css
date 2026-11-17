@@ -30,3 +30,20 @@
 .feedback-checkbox { display: flex; align-items: center; gap: var(--space-2); color: var(--color-ink-2); font-size: var(--text-sm); overflow-wrap: anywhere; }
 .feedback-notice { color: var(--color-ink-2); font-size: var(--text-sm); }
 .feedback-notice:empty { display: none; }
+.my-reports { display: grid; gap: var(--space-4); min-width: 0; }
+.my-reports h2, .my-report h3 { margin: 0; }
+.my-reports-list { display: grid; gap: var(--space-3); }
+.my-report { padding: var(--space-5); border: 1px solid var(--color-rule); border-radius: var(--radius-md); background: var(--color-paper); min-width: 0; overflow-wrap: anywhere; }
+.my-report-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.my-report h3 { font-size: var(--text-lg); min-width: 0; }
+.my-report-status { flex-shrink: 0; padding: var(--space-1) var(--space-2); border-radius: var(--radius-pill); font-size: var(--text-xs); background: var(--color-paper-2); color: var(--color-ink-2); }
+.my-report-status.is-resolved { background: var(--cat-scholarship-bg); color: var(--cat-scholarship-fg); }
+.my-report-meta { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-top: var(--space-3); color: var(--color-ink-2); font-size: var(--text-sm); }
+.my-report-memo { white-space: pre-wrap; margin: var(--space-3) 0 0; }
+.my-report-resolved { margin: var(--space-3) 0 0; color: var(--cat-scholarship-fg); font-size: var(--text-sm); }
+.my-reports > button { justify-self: center; }
+.my-reports-empty { color: var(--color-ink-2); margin: 0; }
+@media (max-width: 768px) {
+  .my-report { padding: var(--space-4); }
+  .my-report-meta { flex-direction: column; }
+}

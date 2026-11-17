@@ -1,11 +1,27 @@
-const compareNotices = (a, b) => (a.end_date || a.start_date || '9999-12-31')
-  .localeCompare(b.end_date || b.start_date || '9999-12-31') || (a.title || '').localeCompare(b.title || '', 'ko');
+const compareNotices = (a, b) => {
+  // 화면의 '마감' 표시와 같은 daysLeft를 사용한다. 날짜 미확인은 미마감 쪽에 둔다.
+  const aEnded = a.daysLeft < 0, bEnded = b.daysLeft < 0;
+  if (aEnded !== bEnded) return aEnded ? 1 : -1;
+  const deadline = (a.end_date || a.start_date || '9999-12-31')
+    .localeCompare(b.end_date || b.start_date || '9999-12-31');
+  return (aEnded ? -deadline : deadline) || (a.title || '').localeCompare(b.title || '', 'ko');
+};
 
 export function filterNotices(events, { category = 'all', source = 'all', query = '' } = {}) {
   const term = query.trim().toLocaleLowerCase();
   return events.filter((event) => (category === 'all' || event.category === category)
     && (source === 'all' || event.source === source)
     && (event.title || '').toLocaleLowerCase().includes(term)).sort(compareNotices);
+}
+
+// 화면의 '마감' 표시와 같은 기준(daysLeft < 0). 날짜 미확인은 마감 전으로 본다.
+export const isEndedNotice = (event) => event.daysLeft < 0;
+
+/** 정렬된 공지를 마감 전/마감으로 나눈다. 순서는 그대로 유지한다. */
+export function splitEnded(events) {
+  const active = [], ended = [];
+  events.forEach((event) => (isEndedNotice(event) ? ended : active).push(event));
+  return { active, ended };
 }
 
 export function savedList(events) {

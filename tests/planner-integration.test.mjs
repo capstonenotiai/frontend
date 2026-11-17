@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { writePlannerCache } from '../src/utils/planner.js';
+import { writePlannerCache, plannerUserInputKey, plannerEventInputKey } from '../src/utils/planner.js';
 
 test('플래너·채팅: 실제 API 요청 계약과 오류 상태를 네트워크 없이 확인한다', async () => {
   const server = await createServer({ configFile: false, envDir: false, server: { middlewareMode: true, ws: false },
@@ -33,6 +33,47 @@ test('플래너·채팅: 실제 API 요청 계약과 오류 상태를 네트워�
   } finally { globalThis.fetch = originalFetch; await server.close(); }
 });
 
+test('채팅 스트리밍: 잘린 SSE 조각을 이어 붙이고 오류·끊김·구버전 서버를 처리한다', async () => {
+  const server = await createServer({ configFile: false, envDir: false, server: { middlewareMode: true, ws: false },
+    define: { 'import.meta.env.VITE_USE_MOCK': '"false"', 'import.meta.env.VITE_PLANNER_USE_MOCK': '"false"', 'import.meta.env.VITE_API_BASE_URL': '""' }, optimizeDeps: { noDiscovery: true, include: [] } });
+  const originalFetch = globalThis.fetch;
+  const sse = (chunks) => new Response(new ReadableStream({ start(controller) {
+    const encoder = new TextEncoder(); chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk))); controller.close();
+  } }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  const requests = [];
+  try {
+    const service = await server.ssrLoadModule('/src/services/plannerService.js');
+    const ev = (event, data) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    const body = ev('delta', { text: '이번 주 ' }) + ev('delta', { text: '마감은\n\n2건' }) + ev('done', { reply: '이번 주 마감은\n\n2건이에요.' });
+    // 이벤트 경계와 한글 바이트 중간에서 잘라 보낸다.
+    const bytes = new TextEncoder().encode(body);
+    globalThis.fetch = async (url, options) => { requests.push({ url, ...options, body: JSON.parse(options.body) });
+      return new Response(new ReadableStream({ start(c) { for (let i = 0; i < bytes.length; i += 7) c.enqueue(bytes.slice(i, i + 7)); c.close(); } }),
+        { status: 200, headers: { 'content-type': 'text/event-stream; charset=utf-8' } }); };
+    const partials = [];
+    const history = Array.from({ length: 20 }, (_, index) => service.createMessage(index % 2 ? 'assistant' : 'user', `과거 ${index}`));
+    const reply = await service.streamMessage({ message: '질문', history, onDelta: (text) => partials.push(text) });
+    assert.deepEqual(partials, ['이번 주 ', '이번 주 마감은\n\n2건']);
+    assert.deepEqual(reply.content, ['이번 주 마감은', '2건이에요.']);
+    assert.equal(requests[0].url, '/api/planner/chat/stream'); assert.equal(requests[0].credentials, 'include');
+    assert.equal(requests[0].body.message, '질문'); assert.equal(requests[0].body.history.length, 12);
+
+    globalThis.fetch = async () => sse([ev('delta', { text: '일부' }), ev('error', { message: '요청이 많아요', status: 503 })]);
+    await assert.rejects(service.streamMessage({ message: 'x' }), (error) => error.status === 503 && error.message === '요청이 많아요');
+    globalThis.fetch = async () => sse([ev('delta', { text: '끊긴 답' })]);
+    await assert.rejects(service.streamMessage({ message: 'x' }), (error) => error.status === 502);
+    globalThis.fetch = async () => new Response(JSON.stringify({ message: '검증 오류' }), { status: 400, headers: { 'content-type': 'application/json' } });
+    await assert.rejects(service.streamMessage({ message: 'x' }), (error) => error.status === 400 && error.message === '검증 오류');
+
+    // 스트리밍 경로가 없는 이전 서버는 기존 /chat 으로 대신한다.
+    const urls = [];
+    globalThis.fetch = async (url) => { urls.push(url); return url.endsWith('/stream') ? new Response('', { status: 404 })
+      : new Response(JSON.stringify({ reply: '기존 답변' }), { status: 200, headers: { 'content-type': 'application/json' } }); };
+    assert.deepEqual((await service.streamMessage({ message: 'x' })).content, ['기존 답변']);
+    assert.deepEqual(urls, ['/api/planner/chat/stream', '/api/planner/chat']);
+  } finally { globalThis.fetch = originalFetch; await server.close(); }
+});
+
 test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접힌 묶음·빈 상태·오류·공통 레이아웃', async () => {
   const server = await createServer({ configFile: false, envDir: false, plugins: [{ name: 'planner-fixture', enforce: 'pre', load(id) {
     const path = id.replaceAll('\\', '/');
@@ -44,6 +85,8 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
   Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: storage });
   globalThis.__plannerApp = { events: [{ id: 'a', title: '장학 공지', registered: true, bookmarked: true, is_new: true }], calendarEvents: [{ id: 'a', registered: true }], hiddenEvents: [], status: 'ready', summary: {}, refresh() {} };
   globalThis.__plannerUser = { profile: { name: '검증 사용자', email: 'fixture', major: '소프트웨어학부', grade: 3, enrollment_status: 'enrolled' }, preferences: { interests: ['career'], enabled_sources: {}, notifications: {} }, status: 'ready' };
+  globalThis.__plannerApp.plannerEventKey = plannerEventInputKey(globalThis.__plannerApp.events, globalThis.__plannerApp.calendarEvents);
+  globalThis.__plannerUser.plannerUserKey = plannerUserInputKey(globalThis.__plannerUser.profile, globalThis.__plannerUser.preferences);
   const render = (Component, props = {}, url = '/planner') => renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [url] }, React.createElement(Component, props)));
   try {
     const { default: Planner, PlannerResults, PlannerLoading, PlannerError } = await server.ssrLoadModule('/src/pages/PlannerPage.jsx');
@@ -51,20 +94,34 @@ test('플래너·공통 채팅 SSR: 모드 고르기·저장 결과 복원·접�
     assert.match(intro, /어떤 도움이 필요한가요/); assert.equal((intro.match(/class="planner-mode"/g) || []).length, 3);
     assert.match(intro, /내 일정 1건 · 새 공지 1건/); assert.match(intro, /소프트웨어학부 · 3학년 · 재학/); assert.match(intro, /진로·취업/);
     assert.doesNotMatch(intro, /Study|Explorer|Balanced|7일 브리핑|ai-chat-panel/);
-    const data = { mode: 'focus', generated_at: new Date().toISOString(), items: [{ opportunity_id: 'o1', title: '핵심 공지', tier: 'core', reason: '먼저 볼 이유', focus_event_id: 'a', days_until_deadline: 3 }, { opportunity_id: 'o2', title: '접힌 공지', tier: 'secondary', reason: '미룰 이유', secondary_reason: 'schedule_conflict' }], needs_grouping_check: [{ opportunity_id: 'o3', title: '묶음 확인 공지' }], corrections: ['internal_correction'] };
-    writePlannerCache(storage, 'focus', 'fixture', data);
+    // 집중할 것: 핵심과 겹치는 후순위는 비교표 한 묶음, 비교 상대가 없는 일정은 한 줄 안내 뒤에 접힌다.
+    const data = { mode: 'focus', generated_at: new Date().toISOString(), items: [
+      { opportunity_id: 'o1', title: '핵심 공지', tier: 'core', reason: '먼저 볼 이유', focus_event_id: 'a', days_until_deadline: 3, start_date: '2026-11-18', start_time: '14:00', conflicts_with: ['o2'], chosen_over: [], benefit: '멘토링', eligibility: 'eligible' },
+      { opportunity_id: 'o2', title: '겹친 공지', tier: 'secondary', reason: '미룰 이유', secondary_reason: 'schedule_conflict', start_date: '2026-11-18', start_time: '10:00', end_time: '17:00', conflicts_with: ['o1'], eligibility: 'needs_check' },
+      { opportunity_id: 'o4', title: '혼자인 공지', tier: 'core', reason: '따로 볼 이유', chosen_over: [], conflicts_with: [] }],
+      needs_grouping_check: [{ opportunity_id: 'o3', title: '묶음 확인 공지' }], corrections: ['internal_correction'] };
+    writePlannerCache(storage, 'focus', 'fixture', data, JSON.stringify([globalThis.__plannerUser.plannerUserKey, globalThis.__plannerApp.plannerEventKey]));
     const restored = render(Planner, {}, '/planner?mode=focus');
-    assert.match(restored, /핵심 공지/); assert.match(restored, /후순위 1건/); assert.match(restored, /같은 공지인지 확인이 필요한 항목 1건/);
-    assert.doesNotMatch(restored, /접힌 공지|묶음 확인 공지|internal_correction|planner-placeholder/);
+    // 묶음은 목록 한 줄 (고른 일정·배지·이유·대신 미룬 일정), 비교표는 펼쳤을 때만. 비교 안 한 일정은 회색 접기 줄.
+    assert.match(restored, /겹치거나 비슷한 일정 <strong>1묶음<\/strong>을 비교했어요/); assert.match(restored, /planner-badge">시간 겹침/);
+    assert.match(restored, /핵심 공지/); assert.match(restored, /먼저 볼 이유/); assert.match(restored, /대신 미뤄요: 겹친 공지/);
+    assert.doesNotMatch(restored, /focus-table/); assert.match(restored, /planner-fold[^>]*>.*겹치거나 비슷한 일정이 없는 1건/);
+    assert.doesNotMatch(restored, /원문에서 일정 구성을 확인할 공지|planner-excluded/);
+    assert.doesNotMatch(restored, /혼자인 공지|묶음 확인 공지|internal_correction|planner-placeholder/);
     assert.match(restored, /aria-expanded="false"/); assert.match(restored, />새로 받기</); assert.match(restored, /30분 동안 저장/);
     assert.equal((render(PlannerLoading).match(/class="planner-placeholder"/g) || []).length, 3);
     assert.match(render(PlannerLoading), /role="status"/);
+    // C안: 첫 단계 문구·진행 막대·안내 문구. 바뀌는 문구는 화면 낭독기에서 숨긴다.
+    const loading = render(PlannerLoading);
+    assert.match(loading, /내 일정을 확인하고 있어요…/); assert.match(loading, /class="planner-bar"/);
+    assert.match(loading, /<div class="planner-progress" aria-hidden="true">/);
+    assert.match(loading, /처음 추천은 시간이 조금 걸려요/); assert.doesNotMatch(loading, /20초/);
     assert.match(render(PlannerError, { error: { status: 502 }, onRetry() {} }), /AI 응답을 받지 못했어요/);
     assert.match(render(PlannerResults, { mode: 'discover', data: { items: [] }, events: [] }), /전체 공지 보기/);
     const { default: Chat } = await server.ssrLoadModule('/src/components/ChatPanel.jsx');
     const chat = render(Chat);
     assert.match(chat, /채팅 열기/); assert.match(chat, /hidden="" role="dialog"/); assert.match(chat, /내 일정에 대해 묻기/);
-    assert.match(chat, /마감 전 일정 20건/); assert.doesNotMatch(chat, /Study|Explorer|Balanced|GPT-4/);
+    assert.match(chat, /NotiAI예요/); assert.match(chat, /class="chat-speaker">NotiAI/); assert.doesNotMatch(chat, /Study|Explorer|Balanced|GPT-4/);
     const { default: Layout } = await server.ssrLoadModule('/src/layouts/AppLayout.jsx');
     for (const url of ['/dashboard', '/schedules', '/schedules/saved', '/schedules/hidden', '/planner', '/calendar', '/settings', '/feedback', '/admin/review']) assert.match(render(Layout, {}, url), /aria-label="채팅 열기"/);
     const { default: Settings } = await server.ssrLoadModule('/src/pages/SettingsPage.jsx');
@@ -85,6 +142,7 @@ test('플래너 mock: 세 API 응답의 앱 ID·접힌 항목·묶음 확인과 
     for (const mode of ['priority', 'discover', 'focus']) {
       const data = buildMockRecommendations(mode, mockStore.events);
       assert.equal(data.mode, mode); assert.ok(data.needs_grouping_check.length > 0);
+      assert.ok(data.needs_grouping_check.every(item => item.reason.includes('원문에서 일정 구성')));
       assert.ok(data.items.every((item) => mockStore.events.some((event) => event.id === item.focus_event_id)));
       if (mode === 'discover') assert.ok(data.items.some((item) => item.grade === 'not_recommended'));
       if (mode === 'focus') assert.deepEqual(data.items.filter((item) => item.tier === 'secondary').map((item) => item.secondary_reason), ['stronger_alternative', 'schedule_conflict', 'information_uncertain']);

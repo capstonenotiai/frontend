@@ -44,7 +44,7 @@ export default function Topbar({ page }) {
           <BellIcon />
           {unreadCount > 0 && <span className="notification-badge" aria-hidden="true">{unreadCount > 99 ? '99+' : unreadCount}</span>}
         </button>
-        {open && <NotificationPanel id="notification-panel" containerRef={containerRef}
+        {open && <NotificationPanel id="notification-panel" containerRef={containerRef} returnRef={bellRef}
           unreadCount={unreadCount} onClose={closePanel} onCountChange={(count) => {
             countRequest.current += 1;
             setUnreadCount(count);

@@ -1,4 +1,4 @@
-﻿import { MOCK_CHAT_LATENCY_MS, PLANNER_USE_MOCK } from '../config/app';
+﻿import { API_BASE_URL, MOCK_CHAT_LATENCY_MS, PLANNER_USE_MOCK } from '../config/app';
 import { mockActionSuggestions, mockWeeklyBriefing, buildMockRecommendations } from '../data/mockPlanner';
 import { compareByDeadline, enrichEvent } from '../utils/events';
 import { trimChatHistory, CHAT_GREETING } from '../utils/planner';
@@ -42,6 +42,76 @@ export async function sendMessage({ message, history = [] }) {
   if (/등록|캘린더/.test(message)) return createMessage('assistant', `다가오는 일정 중 아직 등록하지 않은 일정이 ${events.filter((event) => !event.registered).length}건 있어요. 전체 공지에서 일정 등록을 눌러 보세요.`);
   return createMessage('assistant', '다가오는 일정의 마감이나 캘린더 등록에 대해 물어보세요. 현재는 데모 응답이에요.');
 }
+const toParagraphs = (text) => text.trim().split(/\n{2,}/);
+
+/**
+ * 채팅 답변을 생성되는 대로 받는다. onDelta(지금까지의 전체 텍스트)를 조각마다 호출하고,
+ * 끝나면 sendMessage 와 같은 메시지 객체를 돌려준다.
+ * 스트리밍 엔드포인트가 없거나(404) JSON 으로 답하면 기존 sendMessage 결과로 대신한다.
+ */
+export async function streamMessage({ message, history = [], onDelta, signal } = {}) {
+  if (PLANNER_USE_MOCK) return sendMessage({ message, history });
+  const response = await fetch(`${API_BASE_URL}/api/planner/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify({ message, history: trimChatHistory(history) }),
+    credentials: 'include',
+    signal,
+  });
+  if (response.status === 404) return sendMessage({ message, history });
+  if (!response.ok) {
+    let data = null;
+    try { data = await response.json(); } catch { /* JSON 이 아닌 오류 본문 */ }
+    throw new ApiError(data?.message || `요청 실패 (${response.status})`, { status: response.status, data });
+  }
+  if (!(response.headers.get('content-type') || '').includes('text/event-stream') || !response.body) {
+    const data = await response.json();
+    if (!data || typeof data.reply !== 'string' || !data.reply.trim()) throw new Error('AI 응답을 받지 못했어요.');
+    return createMessage('assistant', toParagraphs(data.reply));
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '', text = '';
+  const handle = (block) => {
+    let event = 'message', data = '';
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) data += line.slice(5).trimStart();
+    }
+    if (!data) return null;
+    const payload = JSON.parse(data);
+    if (event === 'delta' && typeof payload.text === 'string') {
+      text += payload.text;
+      onDelta?.(text);
+    } else if (event === 'done' && typeof payload.reply === 'string' && payload.reply.trim()) {
+      return createMessage('assistant', toParagraphs(payload.reply));
+    } else if (event === 'error') {
+      throw new ApiError(payload.message || 'AI 응답을 받지 못했어요.', { status: payload.status || 502, data: payload });
+    }
+    return null;
+  };
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      buffer = buffer.replace(/\r\n/g, '\n');
+      let index;
+      while ((index = buffer.indexOf('\n\n')) !== -1) {
+        const block = buffer.slice(0, index);
+        buffer = buffer.slice(index + 2);
+        const result = handle(block);
+        if (result) return result;
+      }
+      if (done) break;
+    }
+    const result = buffer.trim() && handle(buffer);
+    if (result) return result;
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+  throw new ApiError('답변이 중간에 끊겼어요.', { status: 502 });
+}
+
 /** 보존된 이전 화면용 mock 함수. 활성 플래너에서 사용하지 않는다. */
 export async function getWeeklyBriefing() { return mockResponse(mockWeeklyBriefing); }
 export async function getActionSuggestions() { return mockResponse(mockActionSuggestions); }

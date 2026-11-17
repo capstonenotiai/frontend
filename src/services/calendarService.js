@@ -1,6 +1,6 @@
 import { USE_MOCK } from '../config/app';
 import { apiRequest, mockResponse } from './apiClient';
-import { mockStore, updateMockEvent, mockSiblings, applyMockOverrides } from './mockStore';
+import { mockStore, updateMockEvent, mockSiblings, mockVisibleEvent, applyMockOverrides } from './mockStore';
 import { normalizeEvent } from './eventService';
 
 /**
@@ -50,7 +50,8 @@ export async function syncEvent(id) {
 }
 
 export async function getRegisteredEvents() {
-  const data = USE_MOCK ? await mockResponse(mockStore.events.filter((event) => event.registered && event.event_type !== 'result'))
+  const data = USE_MOCK ? await mockResponse(mockStore.events.filter((event) => event.registered && mockVisibleEvent(event))
+    .map(event => ({ ...event, dismissed: false })))
     : await apiRequest('/api/calendar/events');
   return data.map(normalizeEvent);
 }

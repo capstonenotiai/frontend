@@ -4,6 +4,8 @@ import LoadError from '../components/LoadError';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ChatPanel from '../components/ChatPanel';
+import MobileNavigation from '../components/MobileNavigation';
+import NoticeTabs from '../components/NoticeTabs';
 import { getAppPageByPath } from '../config/navigation';
 import { useAppData } from '../context/AppDataContext';
 import { CloseIcon } from '../components/icons';
@@ -22,12 +24,14 @@ export default function AppLayout() {
       <div className="app-main-area">
         <Topbar page={page} />
         <main className="app-content">
+          {pathname.startsWith('/schedules') && <NoticeTabs />}
           {status === 'error' && <LoadError message="일정을 불러오지 못했어요." onRetry={refresh} />}
           {actionError && <div className="load-error action-error" role="alert"><span>처리하지 못했어요. {actionError.message}</span><button type="button" className="action-error-close" aria-label="안내 닫기" onClick={clearActionError}><CloseIcon /></button></div>}
           <Outlet />
         </main>
       </div>
       <ChatPanel />
+      <MobileNavigation />
     </div>
   );
 }

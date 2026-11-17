@@ -11,6 +11,9 @@ dist-ssr/
 !.env.example
 !.env.pages
 
+# notiai.me production build configuration is managed locally.
+.env.production
+
 # wrangler 로컬 서버 비밀값 — .dev.vars.example 만 커밋
 .dev.vars
 .dev.vars.*

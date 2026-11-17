@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectionTimeLabel, filterNotices, savedList, hiddenList } from '../src/utils/noticeFilters.js';
+import { collectionTimeLabel, filterNotices, savedList, hiddenList, splitEnded } from '../src/utils/noticeFilters.js';
 import { createServer } from 'vite';
 
 const events = [
@@ -11,6 +11,37 @@ const events = [
   { id: 'e', title: '가나다 장학', category: 'scholarship', source: 'cbnu', end_date: '2026-10-20' },
 ];
 const ids = (items) => items.map(({ id }) => id);
+
+test('전체·저장·숨김 목록은 미마감 먼저, 마감은 최근 종료순으로 두며 입력을 보존한다', () => {
+  const items = [
+    { id: 'old', end_date: '2026-10-10', daysLeft: -8 },
+    { id: 'soon', end_date: '2026-10-20', daysLeft: 2 },
+    { id: 'recent', start_date: '2026-10-17', daysLeft: -1 },
+    { id: 'unknown', daysLeft: null },
+    { id: 'today', end_date: '2026-10-18', daysLeft: 0 },
+    { id: 'later', end_date: '2026-10-25', daysLeft: 7 },
+  ];
+  const expected = ['today', 'soon', 'later', 'unknown', 'recent', 'old'];
+  const before = structuredClone(items);
+  assert.deepEqual(ids(filterNotices(items)), expected);
+  assert.deepEqual(ids(savedList(items.map(item => ({ ...item, bookmarked: true })))), expected);
+  assert.deepEqual(ids(hiddenList(items.map(item => ({ ...item, dismissed: true })))), expected);
+  assert.deepEqual(items, before);
+});
+
+test('마감된 공지는 별도 목록으로 나누고 정렬 순서를 유지한다(오늘 마감·날짜 미확인은 진행 중)', () => {
+  const items = filterNotices([
+    { id: 'old', end_date: '2026-10-10', daysLeft: -8 },
+    { id: 'today', end_date: '2026-10-18', daysLeft: 0 },
+    { id: 'unknown', daysLeft: null },
+    { id: 'recent', end_date: '2026-10-17', daysLeft: -1 },
+    { id: 'later', end_date: '2026-10-25', daysLeft: 7 },
+  ]);
+  const { active, ended } = splitEnded(items);
+  assert.deepEqual(ids(active), ['today', 'later', 'unknown']);
+  assert.deepEqual(ids(ended), ['recent', 'old']);
+  assert.deepEqual(splitEnded([]), { active: [], ended: [] });
+});
 
 test('분야·출처·제목 검색은 각각 적용되며 공백·대소문자를 무시한다', () => {
   assert.deepEqual(ids(filterNotices(events, { category: 'scholarship' })), ['e', 'a', 'd']);

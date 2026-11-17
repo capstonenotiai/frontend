@@ -8,6 +8,7 @@ import RegisterConfirmDialog from '../components/RegisterConfirmDialog';
 import UndoToast from '../components/UndoToast';
 import { useUser } from './UserContext';
 import { registrationTargets, needsConfirmation } from '../utils/registration';
+import { plannerEventInputKey } from '../utils/planner';
 
 /**
  * 일정 데이터 + 캘린더 등록 상태를 여러 화면(Dashboard / 일정 목록 / 캘린더 / 사이드바)이 공유.
@@ -16,13 +17,17 @@ import { registrationTargets, needsConfirmation } from '../utils/registration';
 const AppDataContext = createContext(null);
 
 export function AppDataProvider({ children, enabled = true }) {
-  const { preferences, sourcesVersion } = useUser();
+  const { profile, preferences, sourcesVersion, plannerSourceKey } = useUser();
+  const account = useRef(null);
+  account.current = { scope: profile.email, sourcesKey: plannerSourceKey };
+  const [plannerSnapshot, setPlannerSnapshot] = useState(null);
   const enabledSources = preferences.enabled_sources;
   const refreshVersion = useRef(0);
   const [events, setEvents] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [hiddenEvents, setHiddenEvents] = useState([]);
   const [registrationQueue, setRegistrationQueue] = useState([]);
+  const registrationTrigger = useRef(null);
   const [actionBusy, setActionBusy] = useState(false);
   const actionLock = useRef(false);
   const [summary, setSummary] = useState(null);
@@ -42,20 +47,24 @@ export function AppDataProvider({ children, enabled = true }) {
   const loadHidden = useCallback(async (version = refreshVersion.current) => {
     const items = await eventService.getEvents(true);
     if (version === refreshVersion.current) setHiddenEvents(items.filter((event) => event.dismissed));
+    return items.filter((event) => event.dismissed);
   }, []);
 
   const refresh = useCallback(async ({ silent = false } = {}) => {
     const version = ++refreshVersion.current;
+    eventService.clearEventDetailCache?.();
+    const inputAccount = account.current;
     if (!silent) setStatus('loading');
     setError(null);
     try {
-      const [nextEvents, nextSummary, nextCalendar] = await Promise.all([
+      const [nextEvents, nextSummary, nextCalendar, nextHidden] = await Promise.all([
         eventService.getEvents(false),
         dashboardService.getDashboardSummary(),
         calendarService.getRegisteredEvents(),
         loadHidden(version),
       ]);
-      if (version !== refreshVersion.current) return false;
+      if (version !== refreshVersion.current || inputAccount.scope !== account.current.scope) return false;
+      setPlannerSnapshot({ ...inputAccount, version, key: plannerEventInputKey(nextEvents, nextCalendar, nextHidden) });
       setEvents(nextEvents);
       setSummary(nextSummary);
       setCalendarEvents(nextCalendar);
@@ -72,8 +81,19 @@ export function AppDataProvider({ children, enabled = true }) {
   useEffect(() => {
     if (enabled) refresh();
     else ++refreshVersion.current; // 공개 화면으로 나간 뒤 이전 조회 응답을 반영하지 않는다.
-  }, [refresh, enabled]);
+  }, [refresh, enabled, profile.email]);
   useEffect(() => { if (enabled && sourcesVersion) refresh({ silent: true }); }, [sourcesVersion, refresh, enabled]);
+
+  // 등록·해제 버튼을 누른 즉시 화면에 반영한다. 실패하면 runAction 이 서버 상태로 다시 불러와 되돌린다.
+  const markRegistered = useCallback((id, interview, registered) => {
+    const anchor = eventsRef.current.find((item) => item.id === String(id));
+    if (!anchor) return;
+    const inBundle = (item) => interview || anchor.event_type === 'interview' ? item.id === anchor.id
+      : item.id === anchor.id || (anchor.notice_id != null && item.notice_id === anchor.notice_id && item.event_type !== 'interview');
+    // 진행 중인 이전 재조회가 낙관적 표시를 덮어쓰지 않게 한다.
+    ++refreshVersion.current;
+    setEvents((items) => items.map((item) => inBundle(item) ? { ...item, registered } : item));
+  }, []);
 
   // Bundle writes can partially succeed in Google. Always reload the server's actual state.
   const runAction = useCallback(async (request) => {
@@ -83,7 +103,10 @@ export function AppDataProvider({ children, enabled = true }) {
     setActionError(null);
     try {
       await request();
-      return await refresh({ silent: true });
+      const refreshed = await refresh({ silent: true });
+      // 저장은 성공했으나 재조회가 실패했다면 이전 입력을 최신으로 취급하지 않는다.
+      if (!refreshed) setPlannerSnapshot(current => current?.version === refreshVersion.current ? current : null);
+      return refreshed;
     } catch (err) {
       await refresh({ silent: true });
       setActionError(err);
@@ -94,7 +117,9 @@ export function AppDataProvider({ children, enabled = true }) {
     }
   }, [refresh]);
 
-  const processRegistrations = useCallback(async (requests) => {
+  const processRegistrations = useCallback(async (requests, continueQueue = false) => {
+    // 비동기 조회와 busy 전환으로 열기 버튼이 포커스를 잃기 전에 보관한다.
+    if (!continueQueue && !actionLock.current && typeof document !== 'undefined') registrationTrigger.current = document.activeElement;
     let queued = false;
     const ok = await runAction(async () => {
       for (let index = 0; index < requests.length; index += 1) {
@@ -106,16 +131,23 @@ export function AppDataProvider({ children, enabled = true }) {
           queued = true;
           return;
         }
+        markRegistered(request.id, request.interview, true);
         if (request.interview) await calendarService.registerInterview(request.id);
         else await calendarService.registerEvent(request.id);
       }
     });
+    if (continueQueue && !queued) setRegistrationQueue([]);
     if (ok && !queued) {
       const message = requests.find((request) => request.successMessage)?.successMessage;
       if (message) showUndo(message);
     }
     return ok;
-  }, [runAction, showUndo]);
+  }, [runAction, showUndo, markRegistered]);
+
+  const unregister = useCallback((id) => runAction(() => {
+    markRegistered(id, false, false);
+    return calendarService.unregisterEvent(id);
+  }), [runAction, markRegistered]);
 
   const toggleRegister = useCallback(
     (id) => {
@@ -123,9 +155,9 @@ export function AppDataProvider({ children, enabled = true }) {
       if (!event) return;
       const registered = !event.registered;
       if (registered) return processRegistrations([{ id, interview: event.event_type === 'interview' }]);
-      return runAction(() => calendarService.unregisterEvent(id));
+      return unregister(id);
     },
-    [runAction, processRegistrations],
+    [unregister, processRegistrations],
   );
 
   const registerAll = useCallback(() => {
@@ -148,7 +180,7 @@ export function AppDataProvider({ children, enabled = true }) {
 
   const registerInterview = useCallback((id) => processRegistrations([{ id, interview: true }]), [processRegistrations]);
   const requestRegistration = useCallback((id, interview = false, editing = false, successMessage) => processRegistrations([{ id, interview, editing, successMessage }]), [processRegistrations]);
-  const unregisterDetailEvent = useCallback((id) => runAction(() => calendarService.unregisterEvent(id)), [runAction]);
+  const unregisterDetailEvent = unregister;
   const setActionStatus = useCallback((id, status) => runAction(() => eventService.setActionStatus(id, status)), [runAction]);
   const setDismissed = useCallback((id, value) => runAction(() => eventService.setDismissed(id, value)), [runAction]);
   const updateOverrides = useCallback((id, overrides) => runAction(() => eventService.updateOverrides(id, overrides)), [runAction]);
@@ -157,16 +189,19 @@ export function AppDataProvider({ children, enabled = true }) {
   const confirmRegistration = useCallback(async (overrides) => {
     const request = registrationQueue[0];
     if (!request) return false;
-    const ok = await runAction(() => request.interview ? calendarService.registerInterview(request.id, overrides, true)
-      : calendarService.registerEvent(request.id, overrides, true));
+    const ok = await runAction(() => {
+      markRegistered(request.id, request.interview, true);
+      return request.interview ? calendarService.registerInterview(request.id, overrides, true)
+        : calendarService.registerEvent(request.id, overrides, true);
+    });
     if (ok) {
       if (request.successMessage) showUndo(request.successMessage);
       const remaining = registrationQueue.slice(1);
-      setRegistrationQueue([]);
-      if (remaining.length) await processRegistrations(remaining);
+      if (remaining.length) await processRegistrations(remaining, true);
+      else setRegistrationQueue([]);
     }
     return ok;
-  }, [registrationQueue, runAction, processRegistrations, showUndo]);
+  }, [registrationQueue, runAction, processRegistrations, showUndo, markRegistered]);
 
   // D-day, 임박도 등 화면용 파생 값
   const enrichedEvents = useMemo(() => {
@@ -177,9 +212,12 @@ export function AppDataProvider({ children, enabled = true }) {
   const enrichedHidden = useMemo(() => hiddenEvents.filter(event => enabledSources[event.source] !== false).map((event) => enrichEvent(event, getToday())), [hiddenEvents, enabledSources]);
 
   const clearActionError = useCallback(() => setActionError(null), []);
+  const plannerEventKey = plannerSnapshot?.scope === profile.email && plannerSnapshot?.sourcesKey === plannerSourceKey
+    ? plannerSnapshot.key : null;
   const value = useMemo(
     () => ({
       events: enrichedEvents,
+      plannerEventKey,
       calendarEvents: enrichedCalendar,
       hiddenEvents: enrichedHidden,
       loadHidden,
@@ -203,7 +241,7 @@ export function AppDataProvider({ children, enabled = true }) {
       registerAll,
       syncEvent,
     }),
-    [enrichedEvents, enrichedCalendar, enrichedHidden, loadHidden, actionBusy, showUndo, updateOverrides, saveBookmark, setActionStatus, setDismissed, requestRegistration, registerInterview, unregisterDetailEvent, summary, status, error, actionError, clearActionError, refresh, toggleRegister, toggleBookmark, registerAll, syncEvent],
+    [enrichedEvents, plannerEventKey, enrichedCalendar, enrichedHidden, loadHidden, actionBusy, showUndo, updateOverrides, saveBookmark, setActionStatus, setDismissed, requestRegistration, registerInterview, unregisterDetailEvent, summary, status, error, actionError, clearActionError, refresh, toggleRegister, toggleBookmark, registerAll, syncEvent],
   );
 
   return <AppDataContext.Provider value={value}>{children}
@@ -212,7 +250,7 @@ export function AppDataProvider({ children, enabled = true }) {
       if (!current?.undo) return;
       if (await current.undo()) setUndoToast((latest) => latest === current ? null : latest);
     }} />
-    {registrationQueue[0] && <RegisterConfirmDialog request={registrationQueue[0]} busy={actionBusy}
+    {registrationQueue[0] && <RegisterConfirmDialog request={registrationQueue[0]} busy={actionBusy} triggerRef={registrationTrigger}
       onCancel={() => setRegistrationQueue([])} onConfirm={confirmRegistration} />}
   </AppDataContext.Provider>;
 }

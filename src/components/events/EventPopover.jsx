@@ -7,9 +7,15 @@ import { formatScheduleWhen } from '../../utils/scheduleWhen';
 import { CloseIcon, ExternalLinkIcon } from '../icons';
 import { categoryClass } from './EventRow';
 import NoticeTimeline from './NoticeTimeline';
+import useMobile from '../../hooks/useMobile';
+import useModalFocus from '../../hooks/useModalFocus';
 
 export function AnchoredDialog({ anchor, fallbackRef, title, onClose, children }) {
+  const mobile = useMobile();
   const panel = useRef(null);
+  const returnRef = useRef(null);
+  returnRef.current = anchor?.isConnected ? anchor : fallbackRef?.current;
+  useModalFocus(mobile, panel, returnRef);
   const closeButton = useRef(null);
   const titleId = useId();
   const [position, setPosition] = useState(null);
@@ -62,11 +68,11 @@ export function AnchoredDialog({ anchor, fallbackRef, title, onClose, children }
       document.removeEventListener('keydown', keyboard);
     };
   }, [anchor, onClose]);
-  const content = <div ref={panel} className="calendar-popover" role="dialog" aria-labelledby={titleId}
+  const content = <>{mobile && <div className="calendar-sheet-backdrop" aria-hidden="true" />}<div ref={panel} className="calendar-popover" role="dialog" aria-modal={mobile || undefined} aria-labelledby={titleId}
     style={{ left: position?.left ?? 16, top: position?.top ?? 16, visibility: position ? 'visible' : 'hidden' }}>
     <button ref={closeButton} type="button" className="calendar-popover-close" aria-label="닫기" onClick={onClose}><CloseIcon /></button>
     <h3 id={titleId}>{title}</h3>{children}
-  </div>;
+  </div></>;
   return typeof document === 'undefined' ? content : createPortal(content, document.body);
 }
 

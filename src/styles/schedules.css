@@ -7,6 +7,12 @@
 .notice-tools { padding: var(--space-3) var(--space-5); }
 .notices-card .notice-list { padding: 0 var(--space-5) var(--space-4); }
 .notices-card .notice-skeletons { padding: 0 var(--space-5) var(--space-4); }
+.notice-ended { border-top: 1px solid var(--color-paper-3); }
+.notice-ended-toggle { display: flex; width: 100%; gap: var(--space-2); align-items: center; justify-content: center; padding: var(--space-3) var(--space-5); border: 0; background: transparent; color: var(--color-ink-2); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.notice-ended-toggle:hover { background: var(--color-paper-2); }
+.notice-ended-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.notice-ended-toggle strong { color: var(--color-ink); font-variant-numeric: tabular-nums; }
+.notices-card .notice-list-ended { padding-top: 0; }
 .notice-chip { border: 0; background: var(--color-paper-2); color: var(--color-ink-2); border-radius: var(--radius-pill); padding: var(--space-2) var(--space-3); display: inline-flex; gap: var(--space-2); align-items: center; font: inherit; font-size: var(--text-sm); white-space: nowrap; cursor: pointer; }
 .notice-chip:hover { background: var(--color-paper-3); }
 .notice-chip[aria-pressed="true"] { background: var(--color-accent-soft); color: var(--color-accent); font-weight: 600; }

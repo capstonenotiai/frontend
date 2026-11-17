@@ -47,7 +47,8 @@ test('홈 서비스: 공지 묶음, 면접 분리, 수정·원본 복원·재반
     await events.setDismissed('home-app', true);
     assert.ok(!(await events.getEvents()).some((event) => event.notice_id === 100));
     await events.setDismissed('home-app', false);
-    assert.equal((await events.getEvents()).filter((event) => event.notice_id === 100).length, 3);
+    assert.deepEqual((await events.getEvents()).filter((event) => event.notice_id === 100).map(event => event.id), ['home-app']);
+    assert.equal((await events.getEventDetail('home-interview')).events.length, 3); // 상세는 비대표 일정을 유지한다.
     await calendar.unregisterEvent('home-interview');
     await assert.rejects(calendar.syncEvent('home-interview'));
     await assert.rejects(calendar.registerInterview('home-app'));

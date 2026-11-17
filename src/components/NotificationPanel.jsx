@@ -2,10 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as notificationService from '../services/notificationService';
 import { formatMonthDay } from '../utils/date';
+import { CloseIcon } from './icons';
+import useMobile from '../hooks/useMobile';
+import useModalFocus from '../hooks/useModalFocus';
 
-export default function NotificationPanel({ id, containerRef, unreadCount, onClose, onCountChange }) {
+export default function NotificationPanel({ id, containerRef, returnRef, unreadCount, onClose, onCountChange }) {
   const navigate = useNavigate();
   const panelRef = useRef(null);
+  const mobile = useMobile();
+  useModalFocus(mobile, panelRef, returnRef);
   const active = useRef(false);
   const lock = useRef(false);
   const loadRequest = useRef(0);
@@ -66,9 +71,10 @@ export default function NotificationPanel({ id, containerRef, unreadCount, onClo
     finally { lock.current = false; if (active.current) setBusy(false); }
   };
   return (
-    <section className="notification-panel" id={id} ref={panelRef} tabIndex={-1} aria-label="알림함" aria-busy={loading || busy}>
+    <section className="notification-panel" id={id} ref={panelRef} tabIndex={-1} role={mobile ? 'dialog' : undefined} aria-modal={mobile ? true : undefined} aria-label="알림함" aria-busy={loading || busy}>
       <div className="notification-header">
         <h2>알림</h2>
+        {mobile && <button type="button" className="notification-close" aria-label="알림 닫기" onClick={onClose}><CloseIcon /></button>}
         <button type="button" className="notification-link" disabled={busy || loading || !(unreadCount || items.some((item) => !item.read))} onClick={() => runAction()}>모두 읽음</button>
       </div>
       {items.map((item) => (
