@@ -86,11 +86,16 @@ export function PlannerResults({ mode, data, events }) {
     </div>;
   };
   return <>
-    <section className="planner-summary" aria-label="추천 요약"><SummarySentence mode={mode} data={data} /><div className="planner-counts">{countPlannerLabels(mode, items).filter(({ count }) => count > 0).map(({ value, label, count }) => <span key={value}>{label} <b>{count}</b></span>)}</div></section>
+    <section className="planner-summary" aria-label="추천 요약"><SummarySentence mode={mode} data={data} /><div className="planner-counts">{countPlannerLabels(mode, items).filter(({ value, count }) => count > 0 && !(mode === 'discover' && value === minorValue)).map(({ value, label, count }) => <span key={value}>{label} <b>{count}</b></span>)}</div></section>
     {!items.length && <div className="planner-empty"><p>추천할 공지가 아직 없어요. 전체 공지에서 관심 저장이나 일정 등록을 해 보세요.</p><Link to="/schedules">전체 공지 보기</Link></div>}
     {(items.length > 0 || grouping.length > 0) && <section className="planner-list" aria-label="추천 목록">
       {main.map(renderItem)}
-      {minor.length > 0 && <><button type="button" className="planner-fold" aria-expanded={minorOpen} aria-controls="planner-minor" onClick={() => { setMinorOpen(!minorOpen); setOpen(null); }}><span className={`planner-chevron ${minorOpen ? 'is-open' : ''}`}><ChevronIcon /></span>{plannerLabel(mode, minorValue)} {minor.length}건</button>{minorOpen && <div id="planner-minor">{minor.map(renderItem)}</div>}</>}
+      {minor.length > 0 && mode === 'discover' && <>
+        <div className="planner-excluded"><span className="planner-excluded-mark" aria-hidden="true">ⓘ</span><span>지역·대상 조건이 맞지 않는 공지 {minor.length}건은 추천에서 뺐어요</span>
+          <button type="button" aria-expanded={minorOpen} aria-controls="planner-minor" onClick={() => { setMinorOpen(!minorOpen); setOpen(null); }}>{minorOpen ? '접기' : '보기'}</button></div>
+        {minorOpen && <div id="planner-minor" className="planner-muted">{minor.map(renderItem)}</div>}
+      </>}
+      {minor.length > 0 && mode !== 'discover' && <><button type="button" className="planner-fold" aria-expanded={minorOpen} aria-controls="planner-minor" onClick={() => { setMinorOpen(!minorOpen); setOpen(null); }}><span className={`planner-chevron ${minorOpen ? 'is-open' : ''}`}><ChevronIcon /></span>{plannerLabel(mode, minorValue)} {minor.length}건</button>{minorOpen && <div id="planner-minor">{minor.map(renderItem)}</div>}</>}
       {grouping.length > 0 && <><button type="button" className="planner-fold" aria-expanded={groupOpen} aria-controls="planner-grouping" onClick={() => setGroupOpen(!groupOpen)}><span className={`planner-chevron ${groupOpen ? 'is-open' : ''}`}><ChevronIcon /></span>원문에서 일정 구성을 확인할 공지 {grouping.length}건</button>{groupOpen && <div id="planner-grouping">{grouping.map((item, index) => <div className="planner-group-item" key={item.opportunity_id ?? index}><strong>{item.title}</strong>{item.reason && <p>{item.reason}</p>}</div>)}</div>}</>}
     </section>}
   </>;
