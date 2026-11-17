@@ -1,17 +1,40 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getEventDetail } from '../services/eventService';
-import { registrationTargets } from '../utils/registration';
+import { registrationTargets, flaggedFields, confirmationReason } from '../utils/registration';
+import { dateLines } from '../utils/adminReview';
 import './RegisterConfirmDialog.css';
 
 const FIELDS = [['start_date', '시작일', 'date'], ['end_date', '종료·마감일', 'date'],
   ['start_time', '시작 시각', 'time'], ['end_time', '종료·마감 시각', 'time'], ['location', '장소', 'text']];
 const TYPES = { application: '접수', submission: '제출', event: '본행사', interview: '면접' };
+const WEEKDAYS = '일월화수목금토';
+
+function shortDate(value) {
+  const [y, m, d] = (value || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return `${m}/${d}(${WEEKDAYS[new Date(y, m - 1, d).getDay()]})`;
+}
+
+/** 요약 한 줄: [{ text, flagged }] 조각. 같은 날이면 날짜를 한 번만 쓴다. */
+function summaryParts(values, flags) {
+  const { start_date: sd, end_date: ed, start_time: st, end_time: et } = values;
+  const join = (...parts) => parts.filter(Boolean).join(' ');
+  const startFlag = flags.has('start_date') || flags.has('start_time');
+  const endFlag = flags.has('end_date') || flags.has('end_time');
+  if (!sd && !ed) return [{ text: '날짜 정보 없음', flagged: startFlag || endFlag }];
+  if (sd && ed && sd !== ed) return [{ text: join(shortDate(sd), st), flagged: startFlag }, { text: ' ~ ' }, { text: join(shortDate(ed), et), flagged: endFlag }];
+  const day = shortDate(ed || sd);
+  if (!ed && endFlag) return [{ text: join(day, st), flagged: startFlag }, { text: ' ~ ' }, { text: '마감일 없음', flagged: true }];
+  const times = st && et && st !== et ? `${st} ~ ${et}` : st || et;
+  return [{ text: join(day, times), flagged: startFlag || endFlag }];
+}
 
 export default function RegisterConfirmDialog({ request, busy, onCancel, onConfirm, triggerRef }) {
   const [items, setItems] = useState(null);
   const [overrides, setOverrides] = useState({});
-  const [checked, setChecked] = useState(false);
+  const [lines, setLines] = useState([]);
+  const [editingRows, setEditingRows] = useState({});
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const backdrop = useRef(null), panel = useRef(null), title = useRef(null);
@@ -92,7 +115,7 @@ export default function RegisterConfirmDialog({ request, busy, onCancel, onConfi
   useLayoutEffect(() => {
     activeRequest.current = request;
     submission.current = null;
-    setItems(null); setOverrides({}); setChecked(false); setError(''); setSubmitting(false);
+    setItems(null); setOverrides({}); setLines([]); setEditingRows({}); setError(''); setSubmitting(false);
     title.current?.focus();
   }, [request]);
   useLayoutEffect(() => {
@@ -104,19 +127,37 @@ export default function RegisterConfirmDialog({ request, busy, onCancel, onConfi
       if (cancelled || activeRequest.current !== request) return;
       const targets = registrationTargets(detail, request);
       setItems(targets);
+      setLines(Array.isArray(detail.date_lines) ? detail.date_lines : []);
       setOverrides(Object.fromEntries(targets.map((e) => [e.id, Object.fromEntries(FIELDS.map(([key]) => [key, e[key] || '']))])));
     }).catch((err) => { if (!cancelled && activeRequest.current === request) setError(err.message); });
     return () => { cancelled = true; };
   }, [request]);
 
+  const editAll = Boolean(request.editing);
+  const valuesOf = (item) => ({ ...item, ...overrides[item.id] });
+  const changed = (items || []).some((item) => FIELDS.some(([key]) => (overrides[item.id]?.[key] || '') !== (item[key] || '')));
+  const reasons = [...new Map((items || []).map((item) => [confirmationReason(item), TYPES[item.event_type] || '일정'])
+    .filter(([reason]) => reason)).entries()];
+  const highlighted = items && lines.length ? dateLines(lines.join('\n'), items.map(valuesOf)) : [];
+  const sourceUrl = items?.find((item) => item.source_url)?.source_url;
+  const rowId = (item) => `${titleId}-row-${item.id}`;
+  const toggleRow = (item) => {
+    const opening = !editingRows[item.id];
+    setEditingRows((prev) => ({ ...prev, [item.id]: opening }));
+    if (opening) requestAnimationFrame(() => document.getElementById(rowId(item))?.querySelector('input')?.focus());
+  };
+
   const content = <div ref={backdrop} className="confirm-backdrop">
     <section ref={panel} className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} aria-busy={blocked}>
-      <h2 ref={title} id={titleId} tabIndex={-1}>{request.editing ? '내 일정 수정' : '날짜를 한 번 확인해 주세요'}</h2>
-      <p id={descriptionId}>{request.editing ? '날짜·시각·장소를 수정할 수 있어요.' : '공지에서 날짜를 한 번 확인해 주세요.'} 수정한 내용은 내 일정에만 적용됩니다.</p>
-      {!request.interview && <p>면접은 함께 등록되지 않습니다. 상세 화면에서 별도로 추가할 수 있습니다.</p>}
+      <h2 ref={title} id={titleId} tabIndex={-1}>{editAll ? '내 일정 수정' : '날짜를 확인해 주세요'}</h2>
+      {items?.[0] && <p className="confirm-sub">{items[0].title}</p>}
+      {reasons.length > 0 && <div className="confirm-reason">
+        <span className="confirm-reason-mark" aria-hidden="true">!</span>
+        <ul>{reasons.map(([reason, type]) => <li key={reason}>{reasons.length > 1 || (items?.length || 0) > 1 ? <strong>{type} · </strong> : null}{reason}</li>)}</ul>
+      </div>}
       {!items && !error && <p role="status">일정을 불러오는 중…</p>}
       <form onSubmit={async (e) => {
-        e.preventDefault(); if (blocked || submission.current || !items?.length || (!request.editing && !checked)) return;
+        e.preventDefault(); if (blocked || submission.current || !items?.length) return;
         submission.current = request; setSubmitting(true);
         setError('');
         const changes = Object.fromEntries((items || []).map((item) => [item.id,
@@ -129,20 +170,42 @@ export default function RegisterConfirmDialog({ request, busy, onCancel, onConfi
           if (activeRequest.current === request) { submission.current = null; setSubmitting(false); }
         }
       }}>
-        {(items || []).map((item) => <fieldset key={item.id} disabled={blocked}>
-          <legend>{TYPES[item.event_type] || '일정'} · {item.title}</legend>
-          <a href={item.source_url || '#'} target="_blank" rel="noreferrer" onClick={(e) => { if (!item.source_url) e.preventDefault(); }}>원문 확인</a>
-          {item.review_required && <p className="confirm-warning">확인 필요 · {item.review_reason}</p>}
-          <div className="confirm-fields">{FIELDS.map(([key, label, type]) => <label key={key}>
-            {label}<input type={type} value={overrides[item.id]?.[key] || ''} maxLength={key === 'location' ? 255 : undefined}
-              onChange={(e) => setOverrides((prev) => ({ ...prev, [item.id]: { ...prev[item.id], [key]: e.target.value } }))} />
-          </label>)}</div>
-        </fieldset>)}
-        {!request.editing && <label className="confirm-check"><input type="checkbox" checked={checked} disabled={blocked} onChange={(e) => setChecked(e.target.checked)} /> 공지의 날짜를 확인했어요.</label>}
-        {error && <p role="alert">{error}</p>}
+        {items?.length > 0 && <div className="confirm-rows">{items.map((item) => {
+          const type = TYPES[item.event_type] || '일정';
+          const flags = flaggedFields(confirmationReason(item));
+          const values = valuesOf(item);
+          const open = editAll || Boolean(editingRows[item.id]);
+          return <div className="confirm-row" key={item.id}>
+            <div className="confirm-row-head">
+              <span className="confirm-type">{type}</span>
+              <div className="confirm-summary">
+                <div className="confirm-when">{summaryParts(values, flags).map((part, i) => part.flagged ? <mark key={i}>{part.text}</mark> : <span key={i}>{part.text}</span>)}</div>
+                <div className="confirm-where">{flags.has('location') ? <mark>{values.location || '장소 정보 없음'}</mark> : values.location || '장소 정보 없음'}</div>
+              </div>
+              {!editAll && <button type="button" className="confirm-edit" disabled={blocked} aria-expanded={open} aria-controls={rowId(item)}
+                aria-label={`${type} 일정 ${open ? '접기' : '고치기'}`} onClick={() => toggleRow(item)}>{open ? '접기' : '고치기'}</button>}
+            </div>
+            {open && <fieldset id={rowId(item)} disabled={blocked}>
+              <legend className="sr-only">{type} · {item.title}</legend>
+              <div className="confirm-fields">{FIELDS.map(([key, label, inputType]) => <label key={key} className={key === 'location' ? 'wide' : undefined}>
+                {label}<input type={inputType} className={flags.has(key) ? 'flagged' : undefined} value={overrides[item.id]?.[key] || ''} maxLength={key === 'location' ? 255 : undefined}
+                  onChange={(e) => setOverrides((prev) => ({ ...prev, [item.id]: { ...prev[item.id], [key]: e.target.value } }))} />
+              </label>)}</div>
+            </fieldset>}
+          </div>;
+        })}</div>}
+        {items && <div className="confirm-source">
+          {highlighted.length > 0 ? <details>
+            <summary>공지에서 날짜가 나온 줄 <span className="confirm-count">{highlighted.length}</span></summary>
+            <div className="confirm-lines">{highlighted.map((line) => <p key={line.index}>{line.parts.map((part, i) => part.match ? <mark key={i}>{part.text}</mark> : part.text)}</p>)}</div>
+          </details> : <p className="confirm-source-empty">공지 글에서 날짜 줄을 찾지 못했어요. 원문 공지에서 확인해 주세요.</p>}
+          {sourceUrl && <a className="confirm-source-link" href={sourceUrl} target="_blank" rel="noreferrer">원문 공지 열기<span aria-hidden="true"> ↗</span></a>}
+        </div>}
+        <p id={descriptionId} className="confirm-note">{editAll ? '날짜·시각·장소를 고칠 수 있어요. ' : ''}고친 내용은 내 캘린더에만 적용돼요.{!request.interview && ' 면접 일정은 상세 화면에서 따로 추가할 수 있어요.'}</p>
+        {error && <p role="alert" className="confirm-error">{error}</p>}
         <div className="confirm-actions">
           <button type="button" disabled={blocked} onClick={() => { if (!submission.current) onCancel(); }}>취소</button>
-          <button type="submit" disabled={blocked || (!request.editing && !checked) || !items?.length}>{blocked ? '저장 중…' : request.editing ? '수정 내용 저장' : '확인하고 등록'}</button>
+          <button type="submit" className="confirm-primary" disabled={blocked || !items?.length}>{blocked ? '저장 중…' : editAll ? '수정 내용 저장' : changed ? '고친 내용으로 등록' : '맞아요, 등록'}</button>
         </div>
       </form>
     </section>
