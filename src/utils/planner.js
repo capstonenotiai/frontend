@@ -89,7 +89,18 @@ export function trimChatHistory(messages = []) {
   return messages.filter(({ role, content }) => ['user', 'assistant'].includes(role) && (Array.isArray(content) ? content.join('\n\n') : String(content ?? '')).trim())
     .slice(-12).map(({ role, content }) => ({ role, content: (Array.isArray(content) ? content.join('\n\n') : content).slice(0, 2000) }));
 }
+/** 서버의 사용 제한 안내(하루 횟수·전체 사용량 소진, 잠시 후 재시도)는 서버 문구를 그대로 보여준다. */
+export function aiLimitMessage(error) {
+  const message = error?.data?.message;
+  if (typeof message !== 'string' || !message.trim()) return '';
+  if (error.status === 429) return message;
+  if (error.status === 503 && message.includes('오늘')) return message;
+  return '';
+}
+
 export function plannerErrorMessage(error) {
+  const limited = aiLimitMessage(error);
+  if (limited) return limited;
   if (error?.status === 500) return 'AI 플래너 설정이 아직 끝나지 않았어요.';
   if ([502, 503].includes(error?.status)) return 'AI 응답을 받지 못했어요. 잠시 후 다시 시도해 주세요.';
   if (error?.status === 400) return '추천 모드를 다시 골라 주세요.';

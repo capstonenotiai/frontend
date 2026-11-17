@@ -80,6 +80,12 @@ test('플래너: 한국 시각과 상태별 한국어 오류', () => {
   assert.equal(recommendationTime('bad'), '');
   assert.equal(plannerErrorMessage({ status: 500 }), 'AI 플래너 설정이 아직 끝나지 않았어요.');
   assert.equal(plannerErrorMessage({ status: 502 }), plannerErrorMessage({ status: 503 }));
+  // 사용 제한은 서버 안내 문구를 그대로 보여준다(일반 503 은 기존 문구 유지).
+  const daily = '오늘 사용할 수 있는 횟수를 모두 썼어요. 내일 다시 이용해 주세요.';
+  assert.equal(plannerErrorMessage({ status: 429, data: { message: daily } }), daily);
+  assert.equal(plannerErrorMessage({ status: 503, data: { message: '오늘 AI 사용량이 모두 소진됐어요.' } }), '오늘 AI 사용량이 모두 소진됐어요.');
+  assert.equal(plannerErrorMessage({ status: 503, data: { message: 'AI 응답 생성에 실패했습니다.' } }), plannerErrorMessage({ status: 502 }));
+  assert.notEqual(plannerErrorMessage({ status: 429 }), '');
 });
 
 test('요약 문장 조사: 받침 없으면 예요', async () => {

@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CHAT_GREETING } from '../utils/planner';
+import { CHAT_GREETING, aiLimitMessage } from '../utils/planner';
 import * as plannerService from '../services/plannerService';
 import RichText from './RichText';
 import { CloseIcon } from './icons';
@@ -60,7 +60,7 @@ export default function ChatPanel() {
         // 끊긴 답변은 지우고 다시 보내기를 안내한다.
         setMessages((current) => current.filter((item) => item.id !== draft.id));
         if (err.status === 401) { setOpen(false); navigate('/', { replace: true }); }
-        else setError({ text, history, message: err.status === 500 ? 'AI 플래너 설정이 아직 끝나지 않았어요.' : '답변을 받지 못했어요. 잠시 후 다시 보내 주세요.' });
+        else setError({ text, history, message: aiLimitMessage(err) || (err.status === 500 ? 'AI 플래너 설정이 아직 끝나지 않았어요.' : '답변을 받지 못했어요. 잠시 후 다시 보내 주세요.') });
       }
     } finally {
       busy.current = false;
