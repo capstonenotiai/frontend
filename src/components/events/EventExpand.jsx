@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppData } from '../../context/AppDataContext';
 import { getEventDetail } from '../../services/eventService';
 import NoticeTimeline from './NoticeTimeline';
+import { LOCAL_ONLY_NOTE, isLocalOnly, unregisterMessage } from '../../utils/calendarConnect';
 import { ExternalLinkIcon } from '../icons';
 import './events.css';
 
@@ -23,7 +24,7 @@ export default function EventExpand({ event, hideActions = false, notificationTa
   const run = async (key, action) => { setPending(key); try { return await action(); } finally { setPending(null); } };
   const label = (key, idle, busy) => (pending === key ? busy : idle);
   const removeRegistration = async (item, interview = false) => {
-    if (await run('unregister', () => unregisterDetailEvent(item.id))) showUndo('등록을 해제했어요. Google 캘린더에서도 빠져요.', () => requestRegistration(item.id, interview));
+    if (await run('unregister', () => unregisterDetailEvent(item.id))) showUndo(unregisterMessage(item), () => requestRegistration(item.id, interview));
   };
   return <div className={`event-expand ${hideActions ? 'without-actions' : ''}`} aria-busy={actionBusy}>
     <div className="event-expand-content">
@@ -32,6 +33,7 @@ export default function EventExpand({ event, hideActions = false, notificationTa
       {!hideActions && event.registered && ['needs_sync', 'failed'].includes(event.sync_status) && <p className="event-sync">
         수정한 내용이 Google 캘린더에 아직 반영되지 않았어요. <button type="button" className="event-link" disabled={actionBusy} onClick={() => syncEvent(event.id)}>다시 반영</button>
       </p>}
+      {!hideActions && isLocalOnly(event) && <p className="event-meta">{LOCAL_ONLY_NOTE}</p>}
       {!detail && !detailError && <p className="event-meta" role="status">전체 일정을 불러오는 중…</p>}
       {detailError && <p className="event-error" role="alert">{detailError} <button type="button" className="event-link" disabled={actionBusy} onClick={() => setRetry(retry + 1)}>다시 불러오기</button></p>}
       {detail && !detail.events.length && <p className="event-meta">공개된 일정이 없어요.</p>}

@@ -11,6 +11,8 @@ import { useUser } from '../context/UserContext';
 import { canToggleSource } from '../utils/settings';
 import { logout, deleteAccount } from '../services/userService';
 import DeleteAccountDialog from '../components/DeleteAccountDialog';
+import { API_BASE_URL } from '../config/app';
+import { calendarConnectUrl } from '../utils/calendarConnect';
 
 function Section({ title, description, children }) {
   return <section className="settings-section"><h2>{title}</h2>{description && <p className="settings-description">{description}</p>}{children}</section>;
@@ -48,6 +50,10 @@ export default function SettingsPage() {
       <div className="settings-account"><span className="settings-avatar" aria-hidden="true">{profile.name.slice(0, 1)}</span><div><p className="settings-account-label">Google 계정</p><strong>{profile.name}</strong><p className="settings-description">{profile.email}</p></div>
         <button className="settings-button" type="button" disabled={busy} onClick={async () => { if (busy) return; setBusy(true); setError(''); try { await logout(); resetAccount(); navigate('/', { replace: true }); } catch { setError('로그아웃하지 못했어요. 다시 시도해 주세요.'); } finally { setBusy(false); } }}>{busy ? '로그아웃 중…' : '로그아웃'}</button>
       </div>{error && <p className="settings-error" role="alert">{error}</p>}
+      {profile.calendar_connected === false && <SettingsRow name="Google 캘린더" sub="연결 안 됨 · 등록한 일정은 NotiAI 안에만 보여요. 연결하면 Google 캘린더로 옮겨 드려요.">
+        <button className="settings-button" type="button" onClick={() => window.location.assign(calendarConnectUrl(API_BASE_URL, '/settings', ''))}>연결하기</button>
+      </SettingsRow>}
+      {profile.calendar_connected === true && <SettingsRow name="Google 캘린더" sub="연결됨 · 등록한 일정이 Google 캘린더에도 들어가요." />}
       <div className="settings-delete-row"><button ref={deleteTrigger} type="button" className="settings-button quiet danger-text" disabled={busy} onClick={() => setDeleteOpen(true)}>계정 삭제</button></div>
     </Section>
     {deleteOpen && <DeleteAccountDialog triggerRef={deleteTrigger} onCancel={closeDelete} onDelete={async () => {

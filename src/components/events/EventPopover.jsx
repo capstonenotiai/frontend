@@ -7,6 +7,7 @@ import { formatScheduleWhen } from '../../utils/scheduleWhen';
 import { CloseIcon, ExternalLinkIcon } from '../icons';
 import { categoryClass } from './EventRow';
 import NoticeTimeline from './NoticeTimeline';
+import { LOCAL_ONLY_NOTE, isLocalOnly, unregisterMessage } from '../../utils/calendarConnect';
 import useMobile from '../../hooks/useMobile';
 import useModalFocus from '../../hooks/useModalFocus';
 
@@ -91,7 +92,7 @@ export default function EventPopover({ event, anchor, fallbackRef, onClose }) {
   const remove = async () => {
     if (await unregisterDetailEvent(event.id)) {
       onClose();
-      showUndo('등록을 해제했어요. Google 캘린더에서도 빠져요.', () => requestRegistration(event.id, event.event_type === 'interview'));
+      showUndo(unregisterMessage(event), () => requestRegistration(event.id, event.event_type === 'interview'));
     }
   };
   return <AnchoredDialog anchor={anchor} fallbackRef={fallbackRef} title={event.title} onClose={onClose}>
@@ -100,6 +101,7 @@ export default function EventPopover({ event, anchor, fallbackRef, onClose }) {
     {event.detail && <p className="event-summary" title={event.detail}>{event.detail}</p>}
     {event.review_required && <p className="event-warning">공지에서 날짜를 한 번 확인해 주세요.</p>}
     {['needs_sync', 'failed'].includes(event.sync_status) && <p className="event-sync">수정한 내용이 Google 캘린더에 아직 반영되지 않았어요. <button type="button" className="event-link" disabled={actionBusy} onClick={() => syncEvent(event.id)}>다시 반영</button></p>}
+    {isLocalOnly(event) && <p className="event-meta">{LOCAL_ONLY_NOTE}</p>}
     {!detail && !error && <p className="event-meta" role="status">전체 일정을 불러오는 중…</p>}
     {error && <p className="event-error" role="alert">{error} <button type="button" className="event-link" onClick={() => setRetry(retry + 1)}>다시 불러오기</button></p>}
     {detail && !detail.events.length && <p className="event-meta">공개된 일정이 없어요.</p>}
