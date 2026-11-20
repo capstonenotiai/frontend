@@ -1,5 +1,7 @@
 /** 캘린더 권한을 처음 받을 때: 누른 등록 요청을 잠시 보관했다가 Google 에서 돌아오면 이어서 처리한다. */
 export const CALENDAR_PENDING_KEY = 'notiai:calendar:pending';
+/** '나중에'를 고른 계정: 그다음부터는 묻지 않고 NotiAI 안에만 등록한다. */
+export const calendarLaterKey = (email) => `notiai.calendar.later.${email}`;
 export const CALENDAR_RESULT_PARAM = 'calendar';
 const PENDING_TTL_MS = 30 * 60 * 1000;
 
@@ -36,3 +38,20 @@ export function takePendingRegistrations(storage, email, now = Date.now()) {
     return data.requests.filter((request) => request && typeof request.id === 'string');
   } catch { return []; }
 }
+
+export function readCalendarLater(storage, email) {
+  try { return !!email && storage?.getItem(calendarLaterKey(email)) === '1'; } catch { return false; }
+}
+
+export function saveCalendarLater(storage, email) {
+  try { if (email) storage?.setItem(calendarLaterKey(email), '1'); } catch { /* 저장 접근 제한 */ }
+}
+
+/** NotiAI 안에만 등록된 일정 (Google 캘린더 미연결) */
+export const isLocalOnly = (event) => !!event?.registered && event.sync_status === 'local';
+
+export function unregisterMessage(event) {
+  return event?.sync_status === 'local' ? '등록을 해제했어요.' : '등록을 해제했어요. Google 캘린더에서도 빠져요.';
+}
+
+export const LOCAL_ONLY_NOTE = 'NotiAI 안에만 등록돼 있어요. 설정에서 Google 캘린더를 연결하면 옮겨 드려요.';

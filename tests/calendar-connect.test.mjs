@@ -112,6 +112,23 @@ test('캘린더 미연결 사용자: 안내 창 → Google 이동 → 돌아오�
       await page.close();
     });
 
+    await t.test("'나중에'는 NotiAI 안에만 등록하고 그다음부터는 묻지 않는다", async () => {
+      const page = await browser.newPage();
+      await page.goto(origin + '/page');
+      await page.waitForSelector('#status:text("ready")');
+      await page.click('#reg');
+      await page.getByRole('button', { name: '나중에' }).click();
+      await page.waitForFunction(() => window.__writes.length === 1);
+      assert.equal(await page.getByRole('dialog').count(), 0);
+      assert.equal(await page.evaluate(() => localStorage.getItem('notiai.calendar.later.cc@example.test')), '1');
+      await page.reload();
+      await page.waitForSelector('#status:text("ready")');
+      await page.click('#reg');
+      await page.waitForFunction(() => window.__writes.length === 1);
+      assert.equal(await page.getByRole('dialog').count(), 0);
+      await page.close();
+    });
+
     await t.test('연결되어 돌아오면 보관한 등록을 이어서 하고 주소의 결과 표시를 지운다', async () => {
       const page = await browser.newPage();
       await page.addInitScript(key => {

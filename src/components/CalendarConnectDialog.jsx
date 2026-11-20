@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import './CalendarConnectDialog.css';
 
 /** 처음 일정을 등록할 때 Google 캘린더 권한을 따로 받기 전에 보여주는 안내 창. */
-export default function CalendarConnectDialog({ onCancel, onConnect }) {
+export default function CalendarConnectDialog({ onCancel, onLater, onConnect }) {
   const primary = useRef(null), panel = useRef(null), origin = useRef(null);
   const [leaving, setLeaving] = useState(false);
   const titleId = useId(), descriptionId = useId();
@@ -34,8 +34,9 @@ export default function CalendarConnectDialog({ onCancel, onConnect }) {
         <li>Google 화면에는 "캘린더 일정 보기·수정"으로 표시돼요</li>
       </ul>
       <p className="calendar-connect-tip">Google에서 "확인하지 않은 앱" 화면이 나오면 <b>고급 → notiai.me로 이동</b>을 눌러 주세요.</p>
+      <p className="calendar-connect-tip">나중에를 누르면 NotiAI 안에만 등록돼요. 설정에서 언제든 연결할 수 있어요.</p>
       <div className="calendar-connect-actions">
-        <button type="button" className="calendar-connect-later" onClick={onCancel}>나중에</button>
+        <button type="button" className="calendar-connect-later" disabled={leaving} onClick={onLater}>나중에</button>
         <button ref={primary} type="button" className="calendar-connect-go" disabled={leaving} onClick={() => { setLeaving(true); onConnect(); }}>
           {leaving ? 'Google로 이동 중…' : 'Google 캘린더 연결'}</button>
       </div>

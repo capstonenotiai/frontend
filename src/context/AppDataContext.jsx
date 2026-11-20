@@ -7,7 +7,7 @@ import { getToday } from '../utils/date';
 import RegisterConfirmDialog from '../components/RegisterConfirmDialog';
 import CalendarConnectDialog from '../components/CalendarConnectDialog';
 import { API_BASE_URL } from '../config/app';
-import { CALENDAR_RESULT_MESSAGES, CALENDAR_RESULT_PARAM, calendarConnectUrl, calendarReturnPath, savePendingRegistrations, takePendingRegistrations } from '../utils/calendarConnect';
+import { CALENDAR_RESULT_MESSAGES, CALENDAR_RESULT_PARAM, calendarConnectUrl, calendarReturnPath, readCalendarLater, saveCalendarLater, savePendingRegistrations, takePendingRegistrations } from '../utils/calendarConnect';
 import UndoToast from '../components/UndoToast';
 import { useUser } from './UserContext';
 import { registrationTargets, needsConfirmation } from '../utils/registration';
@@ -25,7 +25,9 @@ export function AppDataProvider({ children, enabled = true }) {
   account.current = { scope: profile.email, sourcesKey: plannerSourceKey };
   // 로그인만 하고 캘린더 권한은 아직 없는 사용자: 처음 등록할 때 연결 안내 창을 연다.
   const calendarMissing = useRef(false);
-  calendarMissing.current = profile.calendar_connected === false;
+  // '나중에'를 고른 계정은 다시 묻지 않고 NotiAI 안에만 등록한다.
+  calendarMissing.current = profile.calendar_connected === false
+    && !(typeof window !== 'undefined' && readCalendarLater(window.localStorage, profile.email));
   const [calendarPrompt, setCalendarPrompt] = useState(null);
   const [plannerSnapshot, setPlannerSnapshot] = useState(null);
   const enabledSources = preferences.enabled_sources;
@@ -214,6 +216,15 @@ export function AppDataProvider({ children, enabled = true }) {
     return ok;
   }, [registrationQueue, runAction, processRegistrations, showUndo, markRegistered]);
 
+  const registerLater = useCallback(() => {
+    const requests = calendarPrompt;
+    setCalendarPrompt(null);
+    if (!requests) return;
+    if (typeof window !== 'undefined') saveCalendarLater(window.localStorage, profile.email);
+    calendarMissing.current = false;
+    processRegistrations(requests);
+  }, [calendarPrompt, profile.email, processRegistrations]);
+
   const connectCalendar = useCallback(() => {
     if (!calendarPrompt || typeof window === 'undefined') return;
     savePendingRegistrations(window.sessionStorage, profile.email, calendarPrompt);
@@ -230,11 +241,12 @@ export function AppDataProvider({ children, enabled = true }) {
     window.history.replaceState(window.history.state, '', calendarReturnPath(window.location.pathname, window.location.search) + window.location.hash);
     const pending = takePendingRegistrations(window.sessionStorage, profile.email);
     if (result === 'connected' && profile.calendar_connected !== false) {
+      showUndo('Google 캘린더를 연결했어요. 등록한 일정이 Google 캘린더에도 들어가요.');
       if (pending.length) processRegistrations(pending);
     } else {
       setActionError(new Error(CALENDAR_RESULT_MESSAGES[result] || CALENDAR_RESULT_MESSAGES.failed));
     }
-  }, [enabled, status, profile.email, profile.calendar_connected, processRegistrations]);
+  }, [enabled, status, profile.email, profile.calendar_connected, processRegistrations, showUndo]);
 
   // D-day, 임박도 등 화면용 파생 값
   const enrichedEvents = useMemo(() => {
@@ -283,7 +295,7 @@ export function AppDataProvider({ children, enabled = true }) {
       if (!current?.undo) return;
       if (await current.undo()) setUndoToast((latest) => latest === current ? null : latest);
     }} />
-    {calendarPrompt && <CalendarConnectDialog onCancel={() => setCalendarPrompt(null)} onConnect={connectCalendar} />}
+    {calendarPrompt && <CalendarConnectDialog onCancel={() => setCalendarPrompt(null)} onLater={registerLater} onConnect={connectCalendar} />}
     {registrationQueue[0] && <RegisterConfirmDialog request={registrationQueue[0]} busy={actionBusy} triggerRef={registrationTrigger}
       onCancel={() => setRegistrationQueue([])} onConfirm={confirmRegistration} />}
   </AppDataContext.Provider>;

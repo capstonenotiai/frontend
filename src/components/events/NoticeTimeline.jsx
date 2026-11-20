@@ -3,6 +3,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { getToday, toISODate } from '../../utils/date';
 import { formatScheduleWhen } from '../../utils/scheduleWhen';
 import { TYPE_LABELS } from '../../utils/eventLabels';
+import { unregisterMessage } from '../../utils/calendarConnect';
 import './events.css';
 
 const FIELDS = [['start_date', '시작일', 'date'], ['end_date', '종료일', 'date'], ['start_time', '시작 시각', 'time'], ['end_time', '종료 시각', 'time'], ['location', '장소', 'text']];
@@ -26,7 +27,7 @@ function EditEvent({ item, onClose }) {
         <button type="button" className="event-button quiet" onClick={onClose}>취소</button>
         <button type="submit" className="event-button primary">저장</button>
       </div>
-      {item.registered && <p className="event-meta">저장하면 Google 캘린더에 다시 반영해야 해요.</p>}
+      {item.registered && item.sync_status !== 'local' && <p className="event-meta">저장하면 Google 캘린더에 다시 반영해야 해요.</p>}
     </fieldset>
   </form>;
 }
@@ -38,7 +39,7 @@ export default function NoticeTimeline({ items, currentId, editable = false, sho
   const event = { id: currentId };
   const timeline = [...items].sort((a, b) => (a.start_date || a.end_date || '9999').localeCompare(b.start_date || b.end_date || '9999') || (a.start_time || '').localeCompare(b.start_time || ''));
   const removeRegistration = async (item, interview = false) => {
-    if (await unregisterDetailEvent(item.id)) showUndo('등록을 해제했어요. Google 캘린더에서도 빠져요.', () => requestRegistration(item.id, interview));
+    if (await unregisterDetailEvent(item.id)) showUndo(unregisterMessage(item), () => requestRegistration(item.id, interview));
   };
   return (
       <ol className="event-timeline">{timeline.map((item) => <li key={item.id} aria-current={notificationTargetId != null && String(item.id) === String(notificationTargetId) ? 'true' : undefined}
