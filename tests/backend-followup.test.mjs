@@ -94,7 +94,8 @@ test('429: 결과/캐시 보존·서버 안내/기본 안내·5초·버튼 비�
     assert.doesNotMatch(render(PlannerRefresh, {}), /disabled|role="status"/);
     assert.match(render(PlannerRefresh, { loading: true }), /disabled=""/);
     const summary = render(PlannerResults, { mode: 'focus', data, events: [] });
-    assert.match(summary, /먼저 집중하고/); assert.doesNotMatch(summary, /서버 문장/);
+    // 11/17부터 집중 모드 요약은 서버 문장 대신 비교 묶음 수로 만든다(3ed0b4d).
+    assert.match(summary, /지금은 겹치거나 비슷한 일정이 없어요/); assert.doesNotMatch(summary, /서버 문장/);
     const { default: Dialog } = await server.ssrLoadModule('/src/components/DeleteAccountDialog.jsx');
     assert.match(render(Dialog, { triggerRef: { current: null }, onCancel() {}, onDelete() {} }), /role="dialog" aria-modal="true"/);
   } finally { await server.close(); }

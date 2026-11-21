@@ -168,6 +168,8 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
       await page.evaluate(() => document.querySelector('.confirm-dialog form').requestSubmit());
       assert.equal(await page.evaluate(() => window.__r05DirectCalls?.length || 0), 0);
       await page.evaluate(() => window.__r05SetBusy(true));
+      // busy는 다음 렌더에서 반영된다. 반영 전에 Escape를 누르면 창이 닫히므로 aria-busy를 확인한다.
+      await page.locator(".confirm-dialog[aria-busy=\"true\"]").waitFor();
       for (let i = 0; i < 4; i++) { await page.keyboard.press(i % 2 ? 'Shift+Tab' : 'Tab'); await inside(); }
       await page.keyboard.press('Escape'); assert.equal(await page.getByRole('dialog').count(), 1);
       await page.evaluate(() => { window.__r05Release('a'); window.__r05SetBusy(false); });
@@ -206,6 +208,8 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
     });
     await run('열기 요소가 사라지면 배경을 복구한 뒤 main으로 안전하게 포커스를 옮긴다', async ({ page, open, close }) => {
       await open(); await page.evaluate(() => window.__r05RemoveTrigger()); await page.keyboard.press('Escape'); await close();
+      // 열기 버튼이 없으면 다음 프레임(requestAnimationFrame)에 main으로 옮긴다. 그 프레임을 기다린다.
+      await page.waitForFunction(() => document.activeElement?.tagName === 'MAIN', null, { timeout: 2000 }).catch(() => {});
       assert.equal(await page.locator('main').evaluate(e => document.activeElement === e), true);
       assert.equal(await page.locator('#root').getAttribute('inert'), null);
       await page.getByRole('textbox', { name: '배경 입력' }).focus(); assert.equal(await page.locator('main').getAttribute('tabindex'), null);
