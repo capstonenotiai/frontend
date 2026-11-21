@@ -90,7 +90,8 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
         const path = id.replaceAll('\\', '/');
         if (id === '\0r05.jsx') return entry;
         if (id === '\0r05-services.js') return services;
-        if (path.endsWith('/src/context/UserContext.jsx')) return 'export function useUser() { return { profile: { email: "r05@example.test" }, preferences: { enabled_sources: {} }, sourcesVersion: 0, plannerSourceKey: "sources" }; }';
+        // ?calendarMissing: Google 캘린더 미연결 계정(STC-28). 기본은 기존과 같이 연결 여부 미지정.
+        if (path.endsWith('/src/context/UserContext.jsx')) return 'export function useUser() { const missing = new URLSearchParams(location.search).has("calendarMissing"); return { profile: { email: "r05@example.test", ...(missing ? { calendar_connected: false } : {}) }, preferences: { enabled_sources: {} }, sourcesVersion: 0, plannerSourceKey: "sources" }; }';
         if (/\/src\/services\/(event|calendar|dashboard)Service\.js$/.test(path)) return 'export * from "/__r05-services.js";';
       },
       configureServer(vite) { vite.middlewares.use(async (req, res, next) => {
@@ -106,11 +107,12 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
     await server.listen();
     browser = await playwright.chromium.launch({ executablePath: process.env.R05_CHROMIUM_EXECUTABLE, headless: true, args: ['--no-sandbox'] });
     const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
-    const run = (name, action, direct = true) => t.test(name, async () => {
+    const run = (name, action, direct = true, query = '') => t.test(name, async () => {
       const page = await browser.newPage(); const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       try {
-        await page.goto(origin + '/dialog' + (direct ? '?direct=1' : ''));
+        const search = [direct && 'direct=1', query].filter(Boolean).join('&');
+        await page.goto(origin + '/dialog' + (search ? '?' + search : ''));
         await page.getByRole('heading', { name: '배경 화면' }).waitFor();
         if (!direct) await page.waitForFunction(() => window.__r05App?.status === 'ready');
         const open = async (name = direct ? '직접 등록' : '묶음 등록') => {
@@ -316,5 +318,68 @@ test('R05 확인창 키보드·배경 차단·실제 등록 큐 Chromium 회귀'
       await page.getByRole('button', { name: '맞아요, 등록' }).click(); await close();
       assert.deepEqual(await page.evaluate(() => window.__r05Writes.map(w => w.id)), ['a', 'b', 'n']);
     }, false);
+
+    // STC-28: Google 캘린더 미연결 → 연결 안내창 → '나중에' → 날짜 확인창 → 닫기 시 원래 열기 버튼으로 포커스 복원
+    const activeInfo = page => page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent,
+      key: document.activeElement?.getAttribute('data-registration-focus') ?? null }));
+    const expectFocus = async (page, expected) => {
+      // 확인창 정리(동기 + 다음 프레임 복원)가 끝날 때까지 기다린 뒤, 실패하면 실제 포커스 위치(MAIN 등)를 그대로 보여준다.
+      await page.waitForFunction(text => document.activeElement?.textContent === text, expected.text, { timeout: 3000 }).catch(() => {});
+      assert.deepEqual(await activeInfo(page), expected);
+    };
+    const REGISTER = { tag: 'BUTTON', text: '일정 등록', key: 'bundle-a' };
+    const laterThenConfirmDialog = async (page, { trigger = '일정 등록', keyboard = false } = {}) => {
+      const opener = page.locator('main').getByRole('button', { name: trigger, exact: true });
+      await opener.waitFor();
+      if (keyboard) { await opener.focus(); await page.keyboard.press('Enter'); } else await opener.click();
+      const connect = page.getByRole('dialog', { name: 'Google 캘린더를 연결할게요' });
+      await connect.waitFor();
+      const later = page.getByRole('button', { name: '나중에', exact: true });
+      if (keyboard) {
+        assert.equal(await page.getByRole('button', { name: 'Google 캘린더 연결' }).evaluate(e => document.activeElement === e), true);
+        await page.keyboard.press('Shift+Tab'); assert.equal(await later.evaluate(e => document.activeElement === e), true);
+        await page.keyboard.press('Enter');
+      } else await later.click();
+      await connect.waitFor({ state: 'detached' });
+      await page.getByRole('dialog', { name: '날짜를 확인해 주세요' }).waitFor();
+      await page.locator('.confirm-dialog .confirm-row').first().waitFor();
+      assert.equal(await page.evaluate(() => localStorage.getItem('notiai.calendar.later.r05@example.test')), '1');
+    };
+    await run('STC-28 키보드만으로 일정 등록→나중에→날짜 확인창→Escape 시 원래 일정 등록 버튼으로 복원한다', async ({ page, inside, close }) => {
+      await laterThenConfirmDialog(page, { keyboard: true });
+      assert.equal(await page.getByRole('dialog').getByRole('heading').evaluate(e => document.activeElement === e), true);
+      assert.equal(await page.locator('#root').getAttribute('inert'), '');
+      for (let i = 0; i < 12; i++) { await page.keyboard.press(i % 3 ? 'Tab' : 'Shift+Tab'); await inside(); }
+      await page.keyboard.press('Escape'); await close();
+      await expectFocus(page, REGISTER);
+      assert.equal(await page.locator('#root').getAttribute('inert'), null);
+      assert.deepEqual(await page.evaluate(() => window.__r05Writes), []);
+    }, false, 'calendarMissing');
+    await run("STC-28 일정 등록→나중에→날짜 확인창→'취소' 버튼 시 원래 일정 등록 버튼으로 복원한다", async ({ page, close }) => {
+      await laterThenConfirmDialog(page);
+      await page.getByRole('button', { name: '취소', exact: true }).click(); await close();
+      await expectFocus(page, REGISTER);
+      assert.deepEqual(await page.evaluate(() => window.__r05Writes), []);
+    }, false, 'calendarMissing');
+    await run('STC-28 공지 줄 밖 열기 버튼도 나중에→Escape 후 그 버튼으로 복원한다', async ({ page, close }) => {
+      await laterThenConfirmDialog(page, { trigger: '묶음 등록' });
+      await page.keyboard.press('Escape'); await close();
+      await expectFocus(page, { tag: 'BUTTON', text: '묶음 등록', key: null });
+    }, false, 'calendarMissing');
+    await run('STC-28 나중에→맞아요, 등록 성공 시 같은 공지 줄의 등록 해제로 복원한다', async ({ page, close }) => {
+      await laterThenConfirmDialog(page);
+      await page.getByRole('button', { name: '맞아요, 등록' }).click(); await close();
+      await expectFocus(page, { ...REGISTER, text: '등록 해제' });
+      assert.deepEqual(await page.evaluate(() => window.__r05Writes.map(w => w.id)), ['a']);
+    }, false, 'calendarMissing');
+    await run('STC-28 연결 안내창에서 바로 Escape하면 등록 없이 일정 등록 버튼으로 돌아간다', async ({ page }) => {
+      const opener = page.locator('main').getByRole('button', { name: '일정 등록', exact: true });
+      await opener.focus(); await page.keyboard.press('Enter');
+      const connect = page.getByRole('dialog', { name: 'Google 캘린더를 연결할게요' }); await connect.waitFor();
+      await page.keyboard.press('Escape'); await connect.waitFor({ state: 'detached' });
+      await expectFocus(page, REGISTER);
+      assert.equal(await page.getByRole('dialog').count(), 0);
+      assert.deepEqual(await page.evaluate(() => window.__r05Writes), []);
+    }, false, 'calendarMissing');
   } finally { await browser?.close(); await server.close(); }
 });
