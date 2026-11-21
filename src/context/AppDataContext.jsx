@@ -126,13 +126,14 @@ export function AppDataProvider({ children, enabled = true }) {
     }
   }, [refresh]);
 
-  const processRegistrations = useCallback(async (requests, continueQueue = false) => {
+  const processRegistrations = useCallback(async (requests, continueQueue = false, trigger) => {
+    // 비동기 조회와 busy 전환으로 열기 버튼이 포커스를 잃기 전에 보관한다.
+    // 캘린더 연결 안내창을 띄우기 전에도 보관해야 '나중에' 뒤 확인창이 원래 버튼으로 돌아간다(STC-28).
+    if (!continueQueue && !actionLock.current && typeof document !== 'undefined') registrationTrigger.current = trigger || document.activeElement;
     if (!continueQueue && calendarMissing.current) {
       setCalendarPrompt(requests);
       return false;
     }
-    // 비동기 조회와 busy 전환으로 열기 버튼이 포커스를 잃기 전에 보관한다.
-    if (!continueQueue && !actionLock.current && typeof document !== 'undefined') registrationTrigger.current = document.activeElement;
     let queued = false;
     const ok = await runAction(async () => {
       for (let index = 0; index < requests.length; index += 1) {
@@ -222,7 +223,8 @@ export function AppDataProvider({ children, enabled = true }) {
     if (!requests) return;
     if (typeof window !== 'undefined') saveCalendarLater(window.localStorage, profile.email);
     calendarMissing.current = false;
-    processRegistrations(requests);
+    // 지금 포커스는 사라질 '나중에' 버튼이다. 안내창을 열 때 보관한 원래 등록 버튼을 넘긴다.
+    processRegistrations(requests, false, registrationTrigger.current);
   }, [calendarPrompt, profile.email, processRegistrations]);
 
   const connectCalendar = useCallback(() => {
